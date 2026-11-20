@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Build the Friday 20 November 2026 world-news broadsheet.
+"""Build the Friday 20 November 2026 world-news front page (v2).
 
 Run:  python3 build_poster.py
-Outputs: entry.png (1024x1024 baseline 4:4:4 JPEG, q91), assets/poster.png,
-         /tmp/news_1120_v1_300.png
+Writes: assets/art_01..13.png, assets/poster.png, entry.png (1024x1024
+baseline 4:4:4 JPEG, quality 90) and /tmp/news_1120_v2_300.png (300px proof).
 """
 from __future__ import annotations
 
@@ -22,130 +22,106 @@ import mapgen
 BASE = Path(__file__).resolve().parent
 ASSETS = BASE / "assets"
 CHROME = "/usr/bin/google-chrome"
-BUILD_TMP = Path("/tmp/news_1120_build")
+BUILD_TMP = Path("/tmp/news_1120_v2_build")
+PROOF_300 = Path("/tmp/news_1120_v2_300.png")
+JPEG_QUALITY = 90
 
 # ---------------------------------------------------------------------------
-# The edition: 13 illustrated cards (1-13) + 20 single-line dispatches (14-33).
-# Every item below is dated Friday 20 November 2026, or was first reported that
-# day in a time zone where the date was already 20 November.  See DATE CHECK.
+# The edition. Every item happened, or was first reported, on Friday
+# 20 November 2026 (UTC). Thursday 19 November stories are named in DATE CHECK.
+# kind: hero (1-3) · grid (4-13) · brief (14-21). pin: (lon, lat) or None.
 # ---------------------------------------------------------------------------
-CARDS = [
-    dict(n=1, region="ASIA-PACIFIC", place="Gopalpur, India", beat="Disaster",
-         headline="Cyclone Akvan Slams Odisha Coast",
-         summary="Landfall near Gopalpur early Friday with 70–80 km/h winds; 370,000 evacuated and 69 trains cancelled.",
-         source="The Hindu · IMD", art="art_01.png"),
-    dict(n=2, region="EUROPE", place="Brussels", beat="Diplomacy",
-         headline="EU and UK Open Reset Summit",
-         summary="PM Andy Burnham meets Costa and von der Leyen as a 100,000-a-year youth-mobility pact heads for signature.",
-         source="BBC · France 24", art="art_02.png"),
-    dict(n=3, region="GLOBAL/SCIENCE", place="Antalya", beat="Climate",
-         headline="COP31 Enters Final Day",
-         summary="A slimmed draft omits fossil-fuel language as ministers clash over finance and Pacific states warn of disaster.",
-         source="BBC · Guardian · RNZ", art="art_03.png"),
-    dict(n=4, region="AMERICAS", place="Washington, USA", beat="Defense",
-         headline="Pentagon Puts Iran War Cost at $48.3bn",
-         summary="Deputy comptroller says the bill has hit $48.3bn, excluding base damage.",
-         source="DW · Middle East Eye", art="art_04.png"),
-    dict(n=5, region="ASIA-PACIFIC", place="Cox's Bazar", beat="Justice",
-         headline="Rohingya Hail Genocide Verdict",
-         summary="Refugees greet the World Court ruling with tears and prayers for return home to Myanmar.",
-         source="Al Jazeera", art="art_05.png"),
-    dict(n=6, region="EUROPE", place="Berlin", beat="Society",
-         headline="Young Germans Protest Conscription",
-         summary="Friday rallies target conscription and militarisation.",
-         source="Al Jazeera", art="art_06.png"),
-    dict(n=7, region="GLOBAL/SCIENCE", place="New York", beat="United Nations",
-         headline="UN Council Tests Grynspan Bid",
-         summary="A colour-coded Friday ballot tests P5 divisions over the next secretary-general.",
-         source="The Guardian", art="art_07.png"),
-    dict(n=8, region="MIDDLE EAST", place="Doha", beat="Football",
-         headline="Africa's Turn at the U-17 World Cup",
-         summary="Morocco, Senegal and Mali lead Friday's fixtures.",
-         source="Africanews", art="art_08.png"),
-    dict(n=9, region="OCEANIA", place="Melbourne", beat="Business",
-         headline="NextDC Bows to Datacentre Backlash",
-         summary="After a 40% share slide and a Melbourne revolt, NextDC rules out new datacentres near homes.",
-         source="The Guardian", art="art_09.png"),
-    dict(n=10, region="OCEANIA", place="Wellington", beat="Crime",
-         headline="Comancheros Hit by First US Sanctions",
-         summary="OFAC blacklists the gang and five linked figures.",
-         source="RNZ · 1News", art="art_10.png"),
-    dict(n=11, region="MIDDLE EAST", place="Strait of Hormuz", beat="Shipping",
-         headline="Gulf Insurance Costs Surge",
-         summary="US memo says Iran blockade is raising war-risk premiums.",
-         source="Al Jazeera", art="art_11.png"),
-    dict(n=12, region="EUROPE", place="Kyiv", beat="War",
-         headline="Russian Strikes Hit Kyiv Bridges",
-         summary="Overnight missiles kill three and damage key Dnipro crossings, officials say.",
-         source="Reuters · France 24", art="art_12.png"),
-    dict(n=13, region="ASIA-PACIFIC", place="Shenzhen", beat="Diplomacy",
-         headline="Xi Hails China-Australia ‘Turnaround’",
-         summary="Xi tells Albanese ties have fully turned around.",
-         source="Reuters · SCMP", art="art_13.png"),
+STORIES = [
+    dict(n=1, kind="hero", region="EUROPE", place="Kyiv, Ukraine", src="AP · Reuters",
+         headline="Russian Missiles Hit Three Kyiv Bridges",
+         summary="Biggest strike on Dnipro crossings of the war kills at least 3 in Kyiv and 2 in Lviv, officials say.",
+         art="art_01.png", pin=(30.5, 50.45)),
+    dict(n=2, kind="hero", region="ASIA-PACIFIC", place="Gopalpur, India", src="IMD · ETV Bharat",
+         headline="Cyclone Akvan Makes Landfall in Odisha",
+         summary="Crossed near Gopalpur with 70–80 km/h winds; 372,000 evacuated, no deaths reported so far.",
+         art="art_02.png", pin=(84.9, 19.3)),
+    dict(n=3, kind="hero", region="EUROPE", place="Brussels", src="BBC · Guardian · AFP",
+         headline="Burnham Seeks Brexit Reset in Brussels",
+         summary="UK–EU summit set to seal food, carbon and youth deals; EU says they hinge on student fees.",
+         art="art_03.png", pin=(4.35, 50.85)),
+    dict(n=4, kind="grid", region="GLOBAL/SCIENCE", place="Antalya", src="AFP · DW",
+         headline="COP31 Final Day: No Deal in Sight",
+         summary="Draft omits fossil fuels; talks look set for overtime.",
+         art="art_04.png", pin=(30.7, 36.9)),
+    dict(n=5, kind="grid", region="MIDDLE EAST", place="Riyadh", src="AP · Reuters",
+         headline="Saudis Down Houthi Missile and Drones",
+         summary="Coalition: 1 missile, 5 drones intercepted; Riyadh targeted.",
+         art="art_05.png", pin=(46.7, 24.7)),
+    dict(n=6, kind="grid", region="EUROPE", place="Rome", src="Repubblica · AP",
+         headline="Italy Grinds to a Halt in General Strike",
+         summary="24-hour CGIL walkout hits schools, hospitals, buses.",
+         art="art_06.png", pin=(12.5, 41.9)),
+    dict(n=7, kind="grid", region="OCEANIA", place="Shenzhen", src="ABC · Guardian",
+         headline="Xi Hails ‘Full Turnaround’ With Australia",
+         summary="Meets Albanese at APEC; PM says ties are ‘constructive’.",
+         art="art_07.png", pin=(114.1, 22.5)),
+    dict(n=8, kind="grid", region="AMERICAS", place="Brevard, Florida", src="NWS · CNN",
+         headline="Florida Space Coast Braces for More Floods",
+         summary="Rare ‘high risk’ rain alert; 100+ rescued since Thursday.",
+         art="art_08.png", pin=(-80.7, 28.2)),
+    dict(n=9, kind="grid", region="GLOBAL/SCIENCE", place="New York", src="SCR · Guardian",
+         headline="UN Council Holds 9th Poll for Next Chief",
+         summary="Colour-coded ballot; Grynspan led 7 of 8 earlier polls.",
+         art="art_09.png", pin=(-74.0, 40.7)),
+    dict(n=10, kind="grid", region="MIDDLE EAST", place="Hormuz", src="Al Jazeera",
+         headline="US Memo: Blockade Lifts Gulf War-Risk Costs",
+         summary="Agency warned premiums were rising, files show.",
+         art="art_10.png", pin=(56.3, 26.6)),
+    dict(n=11, kind="grid", region="AFRICA", place="Johannesburg", src="Reuters",
+         headline="South Africa’s Rand Hits One-Year Low",
+         summary="Coalition-talk jitters and a firm dollar weigh.",
+         art="art_11.png", pin=(28.0, -26.2)),
+    dict(n=12, kind="grid", region="ASIA-PACIFIC", place="Seoul", src="AP · Chosun",
+         headline="S. Korea Has First Cholera Case in 10 Years",
+         summary="Patient had not travelled; safe-water alert issued.",
+         art="art_12.png", pin=(127.0, 37.5)),
+    dict(n=13, kind="grid", region="AFRICA", place="Doha, Qatar", src="Africanews",
+         headline="Morocco, Senegal, Mali Play at U-17 Cup",
+         summary="Africa’s sides headline Friday’s World Cup fixtures.",
+         art="art_13.png", pin=(51.5, 25.3)),
+    dict(n=14, kind="brief", region="ASIA-PACIFIC", place="Tokyo",
+         text="Japan’s core inflation rises to 2.2% in October", pin=(139.7, 35.7)),
+    dict(n=15, kind="brief", region="ASIA-PACIFIC", place="Taipei",
+         text="Taiwan flags 2,700 China-linked accounts to Meta", pin=(121.5, 25.0)),
+    dict(n=16, kind="brief", region="EUROPE", place="Berlin",
+         text="Gen Z protests in dozens of German cities", pin=(13.4, 52.5)),
+    dict(n=17, kind="brief", region="AFRICA", place="Abidjan",
+         text="AfDB: 22 African states in or near debt distress", pin=(-4.0, 5.3)),
+    dict(n=18, kind="brief", region="OCEANIA", place="Melbourne",
+         text="NextDC vows to keep datacentres away from homes", pin=(145.0, -37.8)),
+    dict(n=19, kind="brief", region="OCEANIA", place="Sydney",
+         text="David Jones gives 1,689 staff redundancy notices", pin=(151.2, -33.9)),
+    dict(n=20, kind="brief", region="GLOBAL/SCIENCE", place="Space",
+         text="BepiColombo due to enter Mercury orbit on Saturday", pin=None),
+    dict(n=21, kind="brief", region="AMERICAS", place="Washington",
+         text="Trump calls noon news conference after China trip", pin=(-77.0, 38.9)),
 ]
 
-DISPATCHES = [
-    dict(n=14, region="AFRICA", place="Africa",
-         text="Ibrahim urges Africa to curb $90bn capital flight", source="Reuters"),
-    dict(n=15, region="AFRICA", place="Johannesburg",
-         text="Rand falls to one-year low against dollar", source="Reuters"),
-    dict(n=16, region="AFRICA", place="Pretoria",
-         text="Pretoria welcomes World Court genocide ruling", source="SABC"),
-    dict(n=17, region="AFRICA", place="Cape Town",
-         text="SALC seeks probe into SA arms exports", source="Daily Maverick"),
-    dict(n=18, region="ASIA-PACIFIC", place="Seoul",
-         text="Seoul confirms first cholera case in a decade", source="AP"),
-    dict(n=19, region="ASIA-PACIFIC", place="Taipei",
-         text="Taiwan flags 2,700 China-linked accounts to Meta", source="Reuters"),
-    dict(n=20, region="ASIA-PACIFIC", place="Tokyo",
-         text="Japan core inflation rises to 2.2%", source="Japan Times"),
-    dict(n=21, region="ASIA-PACIFIC", place="Singapore",
-         text="Singapore, China open FTA upgrade talks", source="CNA"),
-    dict(n=22, region="AMERICAS", place="Ottawa",
-         text="Carney's budget passes Commons 162–151", source="Global News"),
-    dict(n=23, region="AMERICAS", place="Austin",
-         text="Texas execution botched as staff fail to find vein", source="The Guardian"),
-    dict(n=24, region="AMERICAS", place="Washington",
-         text="DoJ drops Peltola Alaska Senate challenge", source="The Guardian"),
-    dict(n=25, region="AMERICAS", place="Washington",
-         text="CBO: AUKUS subs to shrink US fleet for years", source="The Guardian"),
-    dict(n=26, region="EUROPE", place="Rome",
-         text="General strike halts schools, transport, hospitals", source="Wanted in Rome"),
-    dict(n=27, region="EUROPE", place="Warsaw",
-         text="Polish jets scrambled over possible airspace breach", source="Euromaidan"),
-    dict(n=28, region="MIDDLE EAST", place="Diwaniyah",
-         text="Women protest ban on male professors", source="The Guardian"),
-    dict(n=29, region="MIDDLE EAST", place="Gaza",
-         text="Gaza Civil Defence: 85%+ of vehicles out of service", source="Al Jazeera"),
-    dict(n=30, region="MIDDLE EAST", place="Riyadh",
-         text="Saudi-led coalition intercepts Houthi missile", source="Reuters"),
-    dict(n=31, region="OCEANIA", place="Sydney",
-         text="David Jones issues 1,600 redundancy notices", source="ABC"),
-    dict(n=32, region="OCEANIA", place="Suva",
-         text="Pew urges stronger tuna transshipment oversight", source="RNZ"),
-    dict(n=33, region="GLOBAL/SCIENCE", place="Mercury",
-         text="BepiColombo primed for Saturday orbit", source="The Guardian"),
-]
-
-REGIONS = [
-    ("ASIA-PACIFIC", 7, "#9A1B1F"),
-    ("AMERICAS", 5, "#1D6F6A"),
-    ("EUROPE", 5, "#1B3A6B"),
-    ("MIDDLE EAST", 5, "#B06A1F"),
-    ("AFRICA", 4, "#2E7D50"),
-    ("OCEANIA", 4, "#5E3A7A"),
-    ("GLOBAL/SCIENCE", 3, "#4A5A6A"),
-]
-REGION_COLORS = {name: col for name, _n, col in REGIONS}
+REGION_ORDER = ["ASIA-PACIFIC", "EUROPE", "AMERICAS", "MIDDLE EAST", "AFRICA", "OCEANIA", "GLOBAL/SCIENCE"]
+REGION_COLORS = mapgen.REGION_COLORS
+REGION_COUNTS = {r: sum(1 for s in STORIES if s["region"] == r) for r in REGION_ORDER}
 
 STATS = [
-    ("110 km/h", "IMD forecast gusts"),
-    ("370,000", "Evacuated in Odisha"),
-    ("48", "U-17 World Cup teams"),
-    ("104", "Qatar 2026 matches"),
-    ("2nd", "EU–UK summit"),
-    ("Day 12", "COP31 final day"),
+    ("3", "Kyiv bridges hit"),
+    ("372,000", "Evacuated in Odisha"),
+    ("100,000", "UK–EU youth visas/yr"),
+    ("0", "Fossil fuels in COP draft"),
+    ("24 hrs", "Italy general strike"),
+    ("1,689", "David Jones job cuts"),
 ]
+
+DECK = ("Russia hits three Kyiv bridges · Cyclone Akvan lands in Odisha · "
+        "UK and EU meet to reset ties · COP31 hits its deadline")
+
+DATE_LINE_1 = ("Every story on this page happened, or was first reported, on Friday 20 November 2026 (UTC). "
+               "Official and disputed claims are attributed.")
+DATE_LINE_2 = ("Left out as Thursday 19 Nov news: Trump–Xi–Putin declaration · ICJ Myanmar genocide ruling · "
+               "Pentagon $48.3bn Iran tally · Canada budget vote · DOJ Alaska suit")
 
 
 def b64(path: Path) -> str:
@@ -156,298 +132,269 @@ def esc(s: str) -> str:
     return html.escape(s, quote=False)
 
 
-def card_html(c: dict) -> str:
+def badge(s: dict, cls: str = "num") -> str:
+    return f'<span class="{cls}" style="background:{REGION_COLORS[s["region"]]}">{s["n"]}</span>'
+
+
+def card_html(s: dict) -> str:
     return f'''
-    <article class="card" data-story="{c['n']}" data-region="{esc(c['region'])}">
-      <img class="art" src="data:image/png;base64,{b64(ASSETS / c['art'])}" alt="">
-      <div class="kicker"><span class="num" style="background:{REGION_COLORS[c['region']]}">{c['n']}</span><span class="place">{esc(c['place'])} · {esc(c['beat'])}</span></div>
-      <h2><span class="hl">{esc(c['headline'])}</span></h2>
-      <p class="summary"><span class="sum">{esc(c['summary'])}</span></p>
-      <div class="src">{esc(c['source'])}</div>
+    <article class="card {s['kind']}" data-story="{s['n']}" data-region="{esc(s['region'])}">
+      <img class="art" src="data:image/png;base64,{b64(ASSETS / s['art'])}" alt="">
+      <div class="kicker">{badge(s)}<span class="place">{esc(s['place'])} · {esc(s['src'])}</span></div>
+      <h2><span class="hl">{esc(s['headline'])}</span></h2>
+      <p class="summary"><span class="sum">{esc(s['summary'])}</span></p>
     </article>'''
 
 
-def dispatch_html(d: dict) -> str:
+def brief_html(s: dict) -> str:
     return f'''
-      <div class="drow" data-story="{d['n']}" data-region="{esc(d['region'])}">
-        <span class="dnum" style="background:{REGION_COLORS[d['region']]}">{d['n']}</span><span class="dplace">{esc(d['place'])}</span><span class="dtext">{esc(d['text'])}</span><span class="dsrc">{esc(d['source'])}</span>
+      <div class="brief" data-story="{s['n']}" data-region="{esc(s['region'])}">
+        {badge(s, 'bnum')}<p class="btext"><span class="bt"><b>{esc(s['place'])}</b> {esc(s['text'])}</span></p>
       </div>'''
 
 
 def build_html() -> str:
-    row1 = "".join(card_html(c) for c in CARDS[:3])
-    row2 = "".join(card_html(c) for c in CARDS[3:8])
-    row3 = "".join(card_html(c) for c in CARDS[8:])
-    left = "".join(dispatch_html(d) for d in DISPATCHES[:10])
-    right = "".join(dispatch_html(d) for d in DISPATCHES[10:])
+    heroes = [s for s in STORIES if s["kind"] == "hero"]
+    grid = [s for s in STORIES if s["kind"] == "grid"]
+    briefs = [s for s in STORIES if s["kind"] == "brief"]
+    pins = [(s["n"], s["pin"][0], s["pin"][1], s["region"]) for s in STORIES if s["pin"]]
     regions = "".join(
-        f'<div class="rg" data-count="{n}" style="background:{col}">{name} <b>{n}</b></div>'
-        for name, n, col in REGIONS
-    )
-    stats = "".join(
-        f'<div class="stat"><b>{esc(v)}</b><span>{esc(l)}</span></div>' for v, l in STATS
-    )
+        f'<div class="rg" data-count="{REGION_COUNTS[r]}" style="background:{REGION_COLORS[r]}">'
+        f'<span>{esc(r)}</span><b>{REGION_COUNTS[r]}</b></div>' for r in REGION_ORDER)
+    stats = "".join(f'<div class="stat"><b>{esc(v)}</b><span>{esc(l)}</span></div>' for v, l in STATS)
+    left = "".join(brief_html(s) for s in briefs[:4])
+    right = "".join(brief_html(s) for s in briefs[4:])
+    total = len(STORIES)
     return f'''<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <style>
-@font-face {{ font-family: 'LibSerif'; src: url('file:///usr/share/fonts/truetype/liberation/LiberationSerif-Bold.ttf'); font-weight: 700; }}
-@font-face {{ font-family: 'LibSerif'; src: url('file:///usr/share/fonts/truetype/liberation/LiberationSerif-BoldItalic.ttf'); font-weight: 700; font-style: italic; }}
-@font-face {{ font-family: 'LatoX'; src: url('file:///usr/share/fonts/truetype/lato/Lato-Regular.ttf'); font-weight: 400; }}
-@font-face {{ font-family: 'LatoX'; src: url('file:///usr/share/fonts/truetype/lato/Lato-Bold.ttf'); font-weight: 700; }}
-@font-face {{ font-family: 'LatoX'; src: url('file:///usr/share/fonts/truetype/lato/Lato-Black.ttf'); font-weight: 900; }}
-@font-face {{ font-family: 'LatoX'; src: url('file:///usr/share/fonts/truetype/lato/Lato-Italic.ttf'); font-weight: 400; font-style: italic; }}
-@font-face {{ font-family: 'LatoX'; src: url('file:///usr/share/fonts/truetype/lato/Lato-BoldItalic.ttf'); font-weight: 700; font-style: italic; }}
-* {{ box-sizing: border-box; }}
+@font-face {{ font-family:'LibSerif'; src:url('file:///usr/share/fonts/truetype/liberation/LiberationSerif-Bold.ttf'); font-weight:700; }}
+@font-face {{ font-family:'LibSerif'; src:url('file:///usr/share/fonts/truetype/liberation/LiberationSerif-BoldItalic.ttf'); font-weight:700; font-style:italic; }}
+@font-face {{ font-family:'LatoX'; src:url('file:///usr/share/fonts/truetype/lato/Lato-Regular.ttf'); font-weight:400; }}
+@font-face {{ font-family:'LatoX'; src:url('file:///usr/share/fonts/truetype/lato/Lato-Bold.ttf'); font-weight:700; }}
+@font-face {{ font-family:'LatoX'; src:url('file:///usr/share/fonts/truetype/lato/Lato-Black.ttf'); font-weight:900; }}
+* {{ box-sizing:border-box; }}
 html, body {{ margin:0; padding:0; width:1024px; height:1024px; overflow:hidden; background:#F6F1E6; }}
 body {{ font-family:'LatoX', sans-serif; color:#141923; -webkit-font-smoothing:antialiased; text-rendering:geometricPrecision; font-variant-ligatures:none; }}
-.page {{ width:1024px; height:1024px; padding:10px 20px 0 20px; position:relative; }}
-.kickerbar {{ display:flex; justify-content:space-between; align-items:flex-end; font:900 8.5px/1 'LatoX'; letter-spacing:.13em; text-transform:uppercase; border-bottom:1.4px solid #141923; padding-bottom:3px; }}
-.kickerbar .r {{ font-weight:700; letter-spacing:.08em; }}
-.masthead {{ font:700 55px/1.08 'LibSerif'; letter-spacing:-.022em; margin:4px 0 0 0; white-space:nowrap; }}
-.deck {{ font:italic 700 13.1px/1.18 'LibSerif'; color:#9A1B1F; margin-top:2px; white-space:nowrap; }}
-.regionbar {{ display:flex; align-items:center; gap:3px; height:22px; margin-top:6px; padding:2px 0; border-top:1.2px solid #141923; border-bottom:1.2px solid #141923; }}
-.rg {{ flex:1; height:16px; display:flex; align-items:center; justify-content:center; gap:3px; font:900 8.9px/1 'LatoX'; letter-spacing:.045em; text-transform:uppercase; white-space:nowrap; color:#FFFDF7; border-radius:3px; }}
-.rg b {{ font:900 10px/1 'LatoX'; color:#FFFDF7; margin-left:1px; }}
-.stats {{ display:flex; height:46px; margin-top:6px; background:#EFE8D8; border:1.25px solid #141923; }}
-.stat {{ flex:1; border-right:1px solid #C9BFA9; padding:3px 7px 2px 7px; display:flex; flex-direction:column; justify-content:center; }}
+.page {{ width:1024px; height:1024px; padding:8px 18px 0 18px; }}
+.kickerbar {{ height:15px; display:flex; justify-content:space-between; align-items:flex-end; font:900 10px/1 'LatoX'; letter-spacing:.11em; text-transform:uppercase; border-bottom:1.5px solid #141923; padding-bottom:3px; }}
+.kickerbar .r {{ color:#9A1B1F; }}
+.masthead {{ height:58px; margin-top:0; font:700 54px/56px 'LibSerif'; letter-spacing:-.02em; text-align:center; white-space:nowrap; }}
+.deck {{ height:19px; font:italic 700 14.5px/19px 'LibSerif'; color:#9A1B1F; text-align:center; white-space:nowrap; }}
+.regionbar {{ display:flex; gap:4px; height:22px; margin-top:4px; }}
+.rg {{ flex:1; display:flex; align-items:center; justify-content:center; gap:6px; border-radius:3px; color:#FFF; white-space:nowrap; }}
+.rg span {{ font:900 10.5px/1 'LatoX'; letter-spacing:.06em; }}
+.rg b {{ font:900 13px/1 'LatoX'; }}
+.stats {{ display:flex; height:48px; margin-top:5px; background:#EFE8D8; border:1.5px solid #141923; }}
+.stat {{ flex:1; min-width:0; border-right:1px solid #BFB49C; padding:3px 9px; display:flex; flex-direction:column; justify-content:center; }}
 .stat:last-child {{ border-right:none; }}
-.stat b {{ font:700 20px/1 'LibSerif'; color:#9A1B1F; letter-spacing:-.012em; }}
-.stat span {{ font:700 6.5px/1.12 'LatoX'; letter-spacing:.065em; text-transform:uppercase; color:#20252E; margin-top:2px; }}
-.cards {{ margin-top:7px; }}
-.row {{ display:flex; gap:8px; }}
-.row1 {{ height:210px; }}
-.row2, .row3 {{ height:178px; margin-top:7px; }}
-.card {{ background:#FFFDF7; border:1.25px solid #141923; padding:6px; display:flex; flex-direction:column; overflow:hidden; position:relative; }}
-.row1 .card {{ flex:1; }}
-.row2 .card, .row3 .card {{ flex:1; }}
-.art {{ width:100%; display:block; outline:1px solid #141923; outline-offset:-1px; object-fit:fill; }}
-.row1 .art {{ height:106px; }}
-.row2 .art, .row3 .art {{ height:82px; }}
-.kicker {{ display:flex; align-items:center; gap:5px; margin-top:4px; height:12px; }}
-.num {{ width:12px; height:12px; flex:0 0 12px; border-radius:50%; background:#9A1B1F; color:#FFFDF7; font:900 7.4px/12px 'LatoX'; text-align:center; }}
-.place {{ font:700 8.0px/1 'LatoX'; letter-spacing:.065em; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }}
-.row2 .place, .row3 .place {{ font-size:7.4px; letter-spacing:.03em; }}
-h2 {{ margin:4px 0 0 0; font:700 19.5px/0.98 'LibSerif'; letter-spacing:-.014em; }}
-.row2 h2, .row3 h2 {{ font-size:15px; margin-top:3px; }}
-.summary {{ margin:3px 0 0 0; font:400 9.7px/1.20 'LatoX'; color:#262B33; }}
-.row2 .summary, .row3 .summary {{ font-size:8.45px; line-height:1.17; margin-top:2px; }}
-.src {{ margin-top:auto; padding-top:2px; font:italic 700 6.7px/1 'LatoX'; letter-spacing:.035em; text-transform:uppercase; color:#6D5B4A; white-space:nowrap; overflow:hidden; }}
-.row2 .src, .row3 .src {{ font-size:5.9px; }}
-.bottom {{ display:flex; gap:12px; height:190px; margin-top:7px; }}
-.mapcol {{ width:300px; flex:0 0 300px; }}
-.maptitle, .disptitle {{ display:flex; justify-content:space-between; align-items:flex-end; font:900 9.1px/1 'LatoX'; letter-spacing:.11em; text-transform:uppercase; border-bottom:1.3px solid #141923; padding-bottom:3px; }}
-.maptitle span, .disptitle span {{ font:700 7.2px/1 'LatoX'; letter-spacing:.06em; color:#9A1B1F; }}
-.mapimg {{ width:300px; height:160px; display:block; margin-top:3px; outline:1px solid #141923; outline-offset:-1px; }}
-.maptally {{ font:700 6.3px/1.25 'LatoX'; letter-spacing:.03em; text-transform:uppercase; color:#3A3F47; margin-top:3px; }}
-.maptally b {{ color:#9A1B1F; }}
-.dispatchcol {{ flex:1; min-width:0; }}
-.dispatchgrid {{ display:flex; gap:10px; margin-top:3px; }}
-.dcol {{ flex:1; min-width:0; }}
-.drow {{ height:17px; display:flex; align-items:baseline; gap:5px; white-space:nowrap; }}
-.dnum {{ width:11px; height:11px; flex:0 0 11px; border-radius:50%; background:#9A1B1F; color:#FFFDF7; font:900 6.1px/11px 'LatoX'; text-align:center; align-self:center; }}
-.dplace {{ font:700 8.5px/1 'LatoX'; letter-spacing:.01em; }}
-.dtext {{ font:400 9.8px/1 'LatoX'; }}
-.dsrc {{ font:italic 700 7.1px/1 'LatoX'; color:#6D5B4A; margin-left:auto; padding-left:4px; }}
-.datecheck {{ margin-top:6px; height:37px; border:2px solid #9A1B1F; background:#EFE8D8; padding:4px 8px 3px 8px; overflow:hidden; }}
-.dc-line {{ font:700 8.35px/1.28 'LatoX'; white-space:nowrap; }}
-.dc-line.two {{ font-weight:400; font-size:7.9px; }}
-.dc-line b {{ color:#9A1B1F; letter-spacing:.06em; }}
-.footer {{ margin-top:3px; font:400 6.55px/1 'LatoX'; color:#3A3F47; letter-spacing:.015em; white-space:nowrap; }}
+.stat b {{ font:700 21px/1 'LibSerif'; color:#9A1B1F; }}
+.stat span {{ font:700 10px/12px 'LatoX'; height:12px; letter-spacing:.03em; text-transform:uppercase; margin-top:3px; white-space:nowrap; overflow:hidden; }}
+.row {{ display:flex; gap:8px; margin-top:7px; }}
+.row.grid {{ gap:7px; }}
+.card {{ background:#FFFDF7; border:1px solid #141923; overflow:hidden; display:flex; flex-direction:column; }}
+.card.hero {{ width:324px; height:254px; padding:6px; }}
+.card.grid {{ width:192px; height:180px; padding:5px; }}
+.art {{ display:block; outline:1px solid #141923; outline-offset:-1px; }}
+.hero .art {{ width:310px; height:142px; }}
+.grid .art {{ width:180px; height:88px; }}
+.kicker {{ display:flex; align-items:center; gap:5px; height:15px; margin-top:4px; }}
+.grid .kicker {{ height:14px; margin-top:3px; gap:4px; }}
+.num {{ flex:0 0 15px; width:15px; height:15px; border-radius:50%; color:#FFF; font:900 10px/15px 'LatoX'; text-align:center; }}
+.grid .num {{ flex:0 0 14px; width:14px; height:14px; line-height:14px; }}
+.place {{ font:700 10px/12px 'LatoX'; height:12px; letter-spacing:.04em; text-transform:uppercase; color:#5B4A3A; white-space:nowrap; overflow:hidden; }}
+.grid .place {{ letter-spacing:.01em; }}
+h2 {{ margin:3px 0 0 0; font:700 21px/1.04 'LibSerif'; letter-spacing:-.01em; text-wrap:balance; }}
+.grid h2 {{ margin-top:2px; font-size:15.5px; line-height:1.03; letter-spacing:-.005em; }}
+.summary {{ margin:3px 0 0 0; font:400 11.5px/1.25 'LatoX'; color:#222831; }}
+.grid .summary {{ margin-top:3px; font-size:10.5px; line-height:1.22; }}
+.bottom {{ display:flex; gap:14px; height:162px; margin-top:7px; }}
+.mapcol {{ flex:0 0 300px; width:300px; }}
+.secthead {{ height:16px; display:flex; justify-content:space-between; align-items:flex-end; font:900 10.5px/1 'LatoX'; letter-spacing:.1em; text-transform:uppercase; border-bottom:1.5px solid #141923; padding-bottom:3px; }}
+.secthead span {{ color:#9A1B1F; letter-spacing:.05em; }}
+.mapbox {{ margin-top:2px; width:300px; height:144px; outline:1px solid #141923; outline-offset:-1px; overflow:hidden; }}
+.mapsvg {{ display:block; }}
+.briefcol {{ flex:1; min-width:0; }}
+.briefgrid {{ display:flex; gap:14px; margin-top:2px; }}
+.bcol {{ flex:1; min-width:0; }}
+.brief {{ height:36px; display:flex; align-items:flex-start; gap:7px; padding-top:3px; border-bottom:1px solid #D6CCB6; }}
+.bcol .brief:last-child {{ border-bottom:none; }}
+.bnum {{ flex:0 0 17px; width:17px; height:17px; border-radius:50%; color:#FFF; font:900 10.5px/17px 'LatoX'; text-align:center; margin-top:1px; }}
+.btext {{ margin:0; font:700 13.5px/15px 'LibSerif'; text-wrap:balance; }}
+.btext b {{ color:#9A1B1F; text-transform:uppercase; font:900 11px/15px 'LatoX'; letter-spacing:.04em; margin-right:2px; }}
+.datecheck {{ margin-top:5px; height:34px; border:2px solid #9A1B1F; background:#EFE8D8; padding:3px 8px 0 8px; overflow:hidden; }}
+.dc {{ font:700 10.2px/13px 'LatoX'; white-space:nowrap; }}
+.dc.two {{ font-weight:400; }}
+.dc b {{ color:#9A1B1F; letter-spacing:.06em; }}
 </style></head>
 <body><div class="page">
-  <div class="kickerbar"><div>THE WORLD CANVAS · ONE-PAGE EDITION</div><div class="r">33 STORIES · 7 REGIONS · ALL VERIFIED FRI 20 NOV 2026</div></div>
+  <div class="kickerbar"><div>The World Canvas · One-day edition</div><div class="r">{total} stories · 7 regions · Friday 20 Nov 2026 (UTC)</div></div>
   <div class="masthead">Friday, 20 November 2026</div>
-  <div class="deck">Cyclone Akvan strikes India's east coast · UK and EU head into reset summit in Brussels · COP31 enters final-day finance clash</div>
+  <div class="deck">{esc(DECK)}</div>
   <div class="regionbar">{regions}</div>
   <div class="stats">{stats}</div>
-  <div class="cards">
-    <div class="row row1">{row1}</div>
-    <div class="row row2">{row2}</div>
-    <div class="row row3">{row3}</div>
-  </div>
+  <div class="row heroes">{''.join(card_html(s) for s in heroes)}</div>
+  <div class="row grid">{''.join(card_html(s) for s in grid[:5])}</div>
+  <div class="row grid">{''.join(card_html(s) for s in grid[5:])}</div>
   <div class="bottom">
     <div class="mapcol">
-      <div class="maptitle"><div>WHERE IT HAPPENED</div><span>1–13</span></div>
-      <img class="mapimg" src="data:image/png;base64,{b64(ASSETS / 'map.png')}" alt="">
-      <div class="maptally">ALL STORIES <b>33</b> · APAC 7 · AMER 5 · EUR 5 · ME 5 · AFR 4 · OCE 4 · GLOBAL 3</div>
+      <div class="secthead"><div>Where it happened</div><span>Pins = story numbers</span></div>
+      <div class="mapbox">{mapgen.svg(pins)}</div>
     </div>
-    <div class="dispatchcol">
-      <div class="disptitle"><div>ALSO ON FRIDAY 20 NOVEMBER 2026</div><span>14–33</span></div>
-      <div class="dispatchgrid"><div class="dcol">{left}</div><div class="dcol">{right}</div></div>
+    <div class="briefcol">
+      <div class="secthead"><div>Also on Friday 20 November</div><span>14–21</span></div>
+      <div class="briefgrid"><div class="bcol">{left}</div><div class="bcol">{right}</div></div>
     </div>
   </div>
   <div class="datecheck">
-    <div class="dc-line"><b>DATE CHECK ✓</b> Every story on this page happened, or was first reported, on Friday, 20 November 2026 (UTC).</div>
-    <div class="dc-line two">Excluded as Thu 19 Nov: Trump–Xi–Putin summit · Anthropic $81bn IPO · ICJ Myanmar verdict · GTA VI · Riyadh PIF strike · US cyber-chief firing · U-17 opener · Nvidia subpoena.</div>
+    <div class="dc"><b>DATE CHECK ✓</b>&nbsp; {esc(DATE_LINE_1)}</div>
+    <div class="dc two">{esc(DATE_LINE_2)}</div>
   </div>
-  <div class="footer">Disputed claims attributed, not stated as fact · Original illustrations; map drawn in code from Natural Earth 110m · Sources: BBC · Guardian · Al Jazeera · Reuters · RNZ · ABC · The Hindu · Africanews · SABC · CNA · Japan Times · DW · France 24 · 1News · Global News · Daily Maverick · Middle East Eye · AP · IMD</div>
 </div></body></html>'''
 
 
 AUDIT_JS = r'''() => {
-  const R = el => { const r = el.getBoundingClientRect(); return {x:r.x,y:r.y,w:r.width,h:r.height,right:r.right,bottom:r.bottom}; };
-  const cards = [...document.querySelectorAll('.card')];
-  const rows = [...document.querySelectorAll('.drow')];
-  const stories = [...cards, ...rows];
-  const unique = new Set(stories.map(e => e.dataset.story)).size;
-  const badges = document.querySelectorAll('.card .num').length;
-  const regionCounts = [...document.querySelectorAll('.rg')].map(e => +e.dataset.count);
-  const regionSum = regionCounts.reduce((a,b)=>a+b,0);
+  const R = el => { const r = el.getBoundingClientRect(); return {x:r.x, y:r.y, w:r.width, h:r.height, right:r.right, bottom:r.bottom}; };
+  const ov = (a, b) => a.x < b.right - 0.5 && b.x < a.right - 0.5 && a.y < b.bottom - 0.5 && b.y < a.bottom - 0.5;
   const doc = [document.documentElement.scrollWidth, document.documentElement.scrollHeight];
+  const cards = [...document.querySelectorAll('.card')];
+  const briefs = [...document.querySelectorAll('.brief')];
+  const stories = [...cards, ...briefs].map(e => +e.dataset.story);
+  const regionCounts = [...document.querySelectorAll('.rg')].map(e => +e.dataset.count);
+  const regionTagged = {};
+  [...cards, ...briefs].forEach(e => regionTagged[e.dataset.region] = (regionTagged[e.dataset.region] || 0) + 1);
 
   const overflows = [];
-  document.querySelectorAll('.card,.art,.drow,.dispatchcol,.mapcol,.datecheck,.footer,.regionbar,.stats,.masthead,.deck,.kickerbar,.rg,.stat,.maptitle,.disptitle').forEach(el => {
-    if (el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1)
-      overflows.push({sel:el.className, sw:el.scrollWidth, cw:el.clientWidth, sh:el.scrollHeight, ch:el.clientHeight});
+  document.querySelectorAll('.page,.kickerbar,.masthead,.deck,.regionbar,.rg,.stats,.stat,.stat span,.card,.kicker,.place,.bottom,.mapbox,.briefcol,.brief,.btext,.datecheck,.dc,.secthead').forEach(el => {
+    if (el.scrollWidth > el.clientWidth + 0.5 || el.scrollHeight > el.clientHeight + 0.5)
+      overflows.push({cls: el.className, text: el.textContent.trim().slice(0, 40), sw: el.scrollWidth, cw: el.clientWidth, sh: el.scrollHeight, ch: el.clientHeight});
   });
 
-  const clipped = [];
-  document.querySelectorAll('.hl,.sum,.src,.place,.dtext,.dplace,.dsrc,.dc-line,.footer,.maptally').forEach(el => {
-    const box = R(el); const p = el.closest('.card,.drow,.datecheck,.page');
-    if (!p) return; const pb = R(p);
-    if (box.x < pb.x - 0.6 || box.right > pb.right + 0.6 || box.y < pb.y - 0.6 || box.bottom > pb.bottom + 0.6)
-      clipped.push({text:el.textContent.slice(0,50), box, parent:pb});
-  });
-
-  const headlineLines = cards.map(c => c.querySelector('.hl').getClientRects().length);
-  const summaryLines = cards.map(c => c.querySelector('.sum').getClientRects().length);
-  const dispatchLines = rows.map(d => d.querySelector('.dtext').getClientRects().length);
-  const dispatchSlack = rows.map(d => {
-    const kids = [...d.children];
-    const used = kids.reduce((a,k)=>a+R(k).w,0) + Math.max(0,kids.length-1)*5;
-    return +(d.clientWidth - used).toFixed(2);
-  });
-  const dateLines = document.querySelectorAll('.dc-line').length;
-  const dc = document.querySelector('.datecheck');
-  const dateOverflow = dc.scrollHeight > dc.clientHeight + 1 || dc.scrollWidth > dc.clientWidth + 1;
-
-  const badgeEdgeClips = cards.map(c => {
-    const cr = R(c), br = R(c.querySelector('.num'));
-    return +Math.min(br.x-cr.x, br.y-cr.y, cr.right-br.right, cr.bottom-br.bottom).toFixed(2);
-  }).filter(v => v < 2);
-
-  // block overlap audit inside each card and across the page's major bands
-  const pairs = [];
+  // every block inside a card, in order, must not overlap the next one or leave the card
+  const blockOverlaps = [];
   cards.forEach(c => {
-    const els = ['.art','.kicker','h2','.summary','.src'].map(s => c.querySelector(s));
-    for (let i=0;i<els.length-1;i++) {
-      const a=R(els[i]), b=R(els[i+1]);
-      if (a.bottom > b.top + 0.6) pairs.push({card:c.dataset.story, a:els[i].className||els[i].tagName, b:els[i+1].className||els[i+1].tagName, gap:+(a.bottom-b.top).toFixed(2)});
-    }
+    const cr = R(c);
+    const els = ['.art', '.kicker', 'h2', '.summary'].map(s => c.querySelector(s));
+    els.forEach((e, i) => {
+      const r = R(e);
+      if (r.bottom > cr.bottom - 1 + 0.5 || r.right > cr.right + 0.5) blockOverlaps.push({card: c.dataset.story, el: e.className || e.tagName, why: 'leaves card'});
+      if (i < els.length - 1 && r.bottom > R(els[i + 1]).y + 0.5) blockOverlaps.push({card: c.dataset.story, a: e.className || e.tagName, b: els[i + 1].className || els[i + 1].tagName});
+    });
+    // text line boxes must also stay inside
+    ['.hl', '.sum', '.place'].forEach(s => { const r = R(c.querySelector(s)); if (r.bottom > cr.bottom - 1 + 0.5) blockOverlaps.push({card: c.dataset.story, el: s, why: 'text clipped'}); });
   });
-  const major = ['.kickerbar','.masthead','.deck','.regionbar','.stats','.cards','.bottom','.datecheck','.footer'].map(s=>document.querySelector(s));
-  const majorOverlaps = [];
-  for (let i=0;i<major.length-1;i++) {
-    const a=R(major[i]), b=R(major[i+1]);
-    if (a.bottom > b.top + 0.6) majorOverlaps.push({a:major[i].className, b:major[i+1].className, gap:+(a.bottom-b.top).toFixed(2)});
-  }
-  const cardOverlaps = [];
-  cards.forEach((c,i)=>cards.forEach((d,j)=>{ if (j<=i) return; const a=R(c), b=R(d);
-    if (a.x < b.right-0.6 && b.x < a.right-0.6 && a.y < b.bottom-0.6 && b.y < a.bottom-0.6)
-      cardOverlaps.push({a:c.dataset.story,b:d.dataset.story}); }));
+  briefs.forEach(b => { const br = R(b), t = R(b.querySelector('.bt')); if (t.bottom > br.bottom + 0.5 || t.right > br.right + 0.5) blockOverlaps.push({brief: b.dataset.story, why: 'text clipped'}); });
 
-  const artBoxes = document.querySelectorAll('.art').length;
-  const mapBoxes = document.querySelectorAll('.mapimg').length;
-  const imagesLoaded = [...document.images].every(img => img.complete && img.naturalWidth > 0);
-  const artSizes = [...document.querySelectorAll('.art')].map(img => [img.naturalWidth, img.naturalHeight]);
-  return {doc, stories:stories.length, unique, badges, regionCounts, regionSum,
-    overflows, clipped, headlineLines, summaryLines, dispatchLines, dispatchSlack,
-    dateLines, dateOverflow, badgeEdgeClips, blockOverlaps:pairs, majorOverlaps, cardOverlaps,
-    artBoxes, mapBoxes, imagesLoaded, artSizes,
-    masthead:R(document.querySelector('.masthead')), deck:R(document.querySelector('.deck')),
-    bottom:R(document.querySelector('.bottom')), datecheck:R(dc), footer:R(document.querySelector('.footer'))};
+  const bands = ['.kickerbar', '.masthead', '.deck', '.regionbar', '.stats', '.row.heroes', '.row.grid', '.bottom', '.datecheck'];
+  const bandEls = bands.flatMap(s => [...document.querySelectorAll(s)]);
+  const bandOverlaps = [];
+  for (let i = 0; i < bandEls.length - 1; i++) { const a = R(bandEls[i]), b = R(bandEls[i + 1]); if (a.bottom > b.y + 0.5) bandOverlaps.push({a: bandEls[i].className, b: bandEls[i + 1].className, by: +(a.bottom - b.y).toFixed(2)}); }
+  const last = R(document.querySelector('.datecheck'));
+  const cardOverlaps = [];
+  const boxes = [...cards, ...briefs, document.querySelector('.mapbox')];
+  boxes.forEach((a, i) => boxes.forEach((b, j) => { if (j > i && ov(R(a), R(b))) cardOverlaps.push([a.dataset.story || 'map', b.dataset.story || 'map']); }));
+
+  // map pins: no two pin discs may overlap, all inside the map
+  const pins = [...document.querySelectorAll('.pin circle')].map(c => ({n: c.parentNode.dataset.pin, x: +c.getAttribute('cx'), y: +c.getAttribute('cy'), r: +c.getAttribute('r')}));
+  const pinOverlaps = [];
+  pins.forEach((a, i) => pins.forEach((b, j) => { if (j > i && Math.hypot(a.x - b.x, a.y - b.y) < a.r + b.r) pinOverlaps.push([a.n, b.n]); }));
+  const pinsOutside = pins.filter(p => p.x - p.r < 0 || p.y - p.r < 0 || p.x + p.r > 300 || p.y + p.r > 144).map(p => p.n);
+
+  const lines = el => { const rs = [...el.getClientRects()]; return new Set(rs.map(r => Math.round(r.top))).size; };
+  const headlineLines = cards.map(c => lines(c.querySelector('.hl')));
+  const summaryLines = cards.map(c => lines(c.querySelector('.sum')));
+  const briefLines = briefs.map(b => lines(b.querySelector('.bt')));
+
+  // font floor: every element that owns visible text
+  let minHtml = 99, minHtmlText = '', minSvg = 99;
+  document.querySelectorAll('body *').forEach(el => {
+    const own = [...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim());
+    if (!own) return;
+    const fs = parseFloat(getComputedStyle(el).fontSize);
+    if (el instanceof SVGElement) { minSvg = Math.min(minSvg, fs); return; }
+    if (fs < minHtml) { minHtml = fs; minHtmlText = el.textContent.trim().slice(0, 30); }
+  });
+  const imagesLoaded = [...document.images].every(i => i.complete && i.naturalWidth > 0);
+  const artSizes = [...document.querySelectorAll('.art')].map(i => [i.naturalWidth, i.naturalHeight, Math.round(R(i).w), Math.round(R(i).h)]);
+  return {doc, stories, regionCounts, regionTagged, overflows, blockOverlaps, bandOverlaps, cardOverlaps,
+          pinCount: pins.length, pinOverlaps, pinsOutside, headlineLines, summaryLines, briefLines,
+          minHtml, minHtmlText, minSvg, imagesLoaded, artSizes, pageBottom: last.bottom,
+          heroH: cards.slice(0, 3).map(c => R(c).h), gridH: cards.slice(3).map(c => R(c).h)};
 }'''
 
 
-def run_audit(page) -> dict:
-    return page.evaluate(AUDIT_JS)
-
-
-def check_audit(a: dict):
-    failures = []
+def check_audit(a: dict) -> list[str]:
+    f = []
+    n = len(STORIES)
     if a["doc"] != [1024, 1024]:
-        failures.append(f"doc {a['doc']} != [1024,1024]")
-    if a["stories"] != 33:
-        failures.append(f"stories {a['stories']} != 33")
-    if a["unique"] != 33:
-        failures.append(f"unique {a['unique']} != 33")
-    if a["badges"] != 13:
-        failures.append(f"badges {a['badges']} != 13")
-    if a["regionSum"] != 33:
-        failures.append(f"region_sum {a['regionSum']} != 33")
-    if any(n < 3 for n in a["regionCounts"]):
-        failures.append(f"region counts below 3: {a['regionCounts']}")
-    for k in ("overflows", "clipped", "badgeEdgeClips", "blockOverlaps", "majorOverlaps", "cardOverlaps"):
+        f.append(f"doc {a['doc']}")
+    if sorted(a["stories"]) != list(range(1, n + 1)):
+        f.append(f"stories {a['stories']}")
+    if sum(a["regionCounts"]) != n or len(a["regionCounts"]) != 7 or min(a["regionCounts"]) < 2:
+        f.append(f"region counts {a['regionCounts']}")
+    if any(a["regionTagged"].get(r, 0) != REGION_COUNTS[r] for r in REGION_ORDER):
+        f.append(f"region tags {a['regionTagged']} != {REGION_COUNTS}")
+    for k in ("overflows", "blockOverlaps", "bandOverlaps", "cardOverlaps", "pinOverlaps", "pinsOutside"):
         if a[k]:
-            failures.append(f"{k}: {a[k]}")
-    if max(a["headlineLines"]) > 2:
-        failures.append(f"headline lines: {a['headlineLines']}")
-    if max(a["summaryLines"]) > 2:
-        failures.append(f"summary lines: {a['summaryLines']}")
-    if any(v != 1 for v in a["dispatchLines"]):
-        failures.append(f"dispatch lines: {a['dispatchLines']}")
-    if min(a["dispatchSlack"]) < 16:
-        failures.append(f"dispatch slack: {a['dispatchSlack']}")
-    if a["dateLines"] != 2 or a["dateOverflow"]:
-        failures.append(f"date check: lines={a['dateLines']} overflow={a['dateOverflow']}")
-    if a["artBoxes"] != 13 or a["mapBoxes"] != 1:
-        failures.append(f"art/map boxes: {a['artBoxes']} + {a['mapBoxes']} != 14")
+            f.append(f"{k}: {a[k]}")
+    if a["pinCount"] != sum(1 for s in STORIES if s["pin"]):
+        f.append(f"pins {a['pinCount']}")
+    for k in ("headlineLines", "summaryLines", "briefLines"):
+        if max(a[k]) > 2:
+            f.append(f"{k}: {a[k]}")
+    if a["minHtml"] < 10:
+        f.append(f"html font {a['minHtml']} ({a['minHtmlText']})")
+    if a["minSvg"] < 9:
+        f.append(f"svg font {a['minSvg']}")
     if not a["imagesLoaded"]:
-        failures.append("an image failed to load")
-    return failures
+        f.append("image failed to load")
+    if any(nw != w * 1 or nh != h for nw, nh, w, h in a["artSizes"]):
+        f.append(f"art scaled in page: {a['artSizes']}")
+    if a["pageBottom"] > 1022:
+        f.append(f"page bottom {a['pageBottom']}")
+    return f
 
 
 def main() -> int:
     art.build_all()
-    mapgen.check_pins()
+    pins = [(s["n"], s["pin"][0], s["pin"][1], s["region"]) for s in STORIES if s["pin"]]
+    mapgen.check(pins)
     BUILD_TMP.mkdir(parents=True, exist_ok=True)
-    (BUILD_TMP / "map.svg").write_text(mapgen.svg_document())
-    for i, c in enumerate(CARDS):
-        im = Image.open(ASSETS / c["art"])
-        want = (309, 106) if i < 3 else (176, 82)
-        if im.size != want:
-            raise SystemExit(f"{c['art']} is {im.size}, expected {want}")
+    html_path = BUILD_TMP / "poster.html"
+    html_path.write_text(build_html(), encoding="utf-8")
 
     with sync_playwright() as p:
         browser = p.chromium.launch(
             executable_path=CHROME,
             args=["--font-render-hinting=none", "--disable-lcd-text", "--disable-gpu",
-                  "--force-device-scale-factor=1", "--hide-scrollbars"],
-        )
+                  "--force-device-scale-factor=1", "--hide-scrollbars"])
         page = browser.new_page(viewport={"width": 1024, "height": 1024}, device_scale_factor=1)
-        # map first, at 2x, then Lanczos down to its printed size
-        page.set_viewport_size({"width": 600, "height": 320})
-        page.goto((BUILD_TMP / "map.svg").as_uri())
-        page.wait_for_timeout(220)
-        page.screenshot(path=str(BUILD_TMP / "map2x.png"))
-        Image.open(BUILD_TMP / "map2x.png").convert("RGB").resize((300, 160), Image.LANCZOS).save(ASSETS / "map.png")
-
-        html_path = BUILD_TMP / "poster.html"
-        html_path.write_text(build_html(), encoding="utf-8")
-        page.set_viewport_size({"width": 1024, "height": 1024})
         page.goto(html_path.as_uri())
-        page.wait_for_timeout(350)
-        page.evaluate("document.fonts.ready")
-        a = run_audit(page)
-        print(json.dumps(a, indent=1)[:6000])
+        page.evaluate("document.fonts.ready.then(() => true)")
+        page.wait_for_timeout(400)
+        a = page.evaluate(AUDIT_JS)
         failures = check_audit(a)
+        print(json.dumps({k: v for k, v in a.items() if k not in ("artSizes",)}, ensure_ascii=False)[:3000])
         if failures:
             print("\nAUDIT FAILURES:")
-            for f in failures:
-                print(" -", f)
+            for x in failures:
+                print(" -", x)
             browser.close()
             return 1
         page.screenshot(path=str(ASSETS / "poster.png"))
         browser.close()
 
     im = Image.open(ASSETS / "poster.png").convert("RGB")
-    im.save(BASE / "entry.png", format="JPEG", quality=91, subsampling=0,
+    im.save(BASE / "entry.png", format="JPEG", quality=JPEG_QUALITY, subsampling=0,
             optimize=True, progressive=False)
-    im.resize((300, 300), Image.LANCZOS).save("/tmp/news_1120_v1b_300.png")
+    im.resize((300, 300), Image.LANCZOS).save(PROOF_300)
     size = (BASE / "entry.png").stat().st_size
-    print(f"\nentry.png: {size} bytes ({size/1024:.1f} KiB)")
-    if not (320 * 1024 <= size <= 450 * 1024):
-        print("WARNING: entry.png outside 320-450 KiB target")
+    print(f"\nAUDIT OK · {len(STORIES)} stories · regions {REGION_COUNTS} · min html font {a['minHtml']}px · "
+          f"min svg font {a['minSvg']}px · pins {a['pinCount']}")
+    print(f"entry.png: {size} bytes ({size / 1024:.1f} KiB)")
+    if size >= 1_048_576:
+        print("ERROR: entry.png is over 1 MiB")
+        return 1
     return 0
 
 
