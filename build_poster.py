@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Build the Friday 20 November 2026 world-news front page (v6).
+"""Build the Friday 20 November 2026 world-news front page (v7).
 
 Run:  python3 build_poster.py
 Writes: assets/art_01..13.png, assets/poster.png, entry.png (1024x1024
 progressive 4:4:4 JPEG at q90 or q89, 380,000-459,999 bytes; 450,000 is the
 soft target) and
-/tmp/news_1120_v6_300.png (300 px Lanczos proof).
+/tmp/news_1120_v7_300.png (300 px Lanczos proof).
 """
 from __future__ import annotations
 
@@ -26,15 +26,17 @@ import mapgen
 BASE = Path(__file__).resolve().parent
 ASSETS = BASE / "assets"
 CHROME = "/usr/bin/google-chrome"
-BUILD_TMP = Path("/tmp/news_1120_v6_build")
-PROOF_300 = Path("/tmp/news_1120_v6_300.png")
-MIN_BYTES, MAX_BYTES = 380_000, 459_999   # v6 hard budget; the gate limit is 1,048,576 bytes
+BUILD_TMP = Path("/tmp/news_1120_v7_build")
+PROOF_300 = Path("/tmp/news_1120_v7_300.png")
+MIN_BYTES, MAX_BYTES = 380_000, 459_999   # v7 hard budget; the gate limit is 1,048,576 bytes
 SOFT_MAX = 450_000
 QUALITIES = (90, 89)
 
 LATO = Path("/usr/share/fonts/truetype/lato")
 BRIEF_PX = 10.5          # brief type size
 BRIEF_MAX_W = 328        # every brief must fit on one line this wide (px)
+BNUM_PX = 10.8           # uncircled bold wire numeral
+BNUM_W, BNUM_GAP = 14, 4 # numeral box width and gap before the place (px)
 
 # ---------------------------------------------------------------------------
 # The edition. Every item happened, or was first reported, on Friday
@@ -51,27 +53,28 @@ STORIES = [
     # --- lead stories -------------------------------------------------------
     dict(n=1, kind="hero", region="EUROPE", beat="Conflict", dl="War", place="Kyiv, Ukraine",
          src="Kyiv Independent, Reuters", tag="OFFICIAL",
-         headline="Russian Missiles Hit Three Kyiv Bridges",
+         headline="Russian Missiles Hit Three\nBridges Across the Dnipro",
          summary="Strikes damage three Dnipro crossings in a barrage of about 110 missiles and "
                  "400 drones; officials say 3 were killed in Kyiv and at least 8 nationwide.",
          art="art_01.png", pin=(30.5, 50.45)),
     dict(n=2, kind="hero", region="ASIA-PACIFIC", beat="Weather", dl="Cyclone", place="Odisha, India",
          src="IMD, The Hindu", tag="OFFICIAL",
-         headline="Cyclone Akvan Makes Landfall in Odisha",
-         summary="The storm crossed the coast near Gopalpur around 8 am and then weakened; "
-                 "up to 372,000 people were evacuated and no deaths have been reported.",
+         headline="Cyclone Akvan Makes Landfall\nNear Gopalpur in Eastern India",
+         summary="The storm crossed the Odisha coast around 8 am local time and then weakened "
+                 "inland; up to 372,000 people were moved to shelters and no deaths have been "
+                 "reported.",
          art="art_02.png", pin=(84.9, 19.3)),
     dict(n=3, kind="hero", region="ASIA-PACIFIC", beat="Markets", dl="Markets",
          place="Taipei · Seoul · Tokyo", src="Reuters, Al Jazeera", tag="CONFIRMED",
-         headline="Asia’s Chip & AI Stocks Sink in Worst Week Since 2020",
+         headline="AI Sell-Off Sinks Asia’s Stock\nMarkets in Worst Week Since 2020",
          summary="Taiwan’s Taiex closes −6.23%, Korea’s Kospi −5.21% and Japan’s Nikkei −5.06% "
-                 "as fears over AI spending deepen.",
+                 "as chipmakers lead the rout and fears over AI spending deepen.",
          art="art_03.png", pin=(121.5, 25.0)),
     # --- illustrated cards --------------------------------------------------
     dict(n=4, kind="grid", region="EUROPE", beat="Diplomacy", dl="Diplomacy", place="Brussels",
          src="EU, Guardian", tag="CONFIRMED",
          headline="UK and EU Seal Post-Brexit Reset",
-         summary="The deal cuts food checks and opens 100,000 youth mobility places a year.",
+         summary="It cuts food checks and adds 100,000 youth mobility places a year.",
          art="art_04.png", pin=(4.35, 50.85)),
     dict(n=5, kind="grid", region="GLOBAL/SCIENCE", beat="Climate", dl="Climate", place="Antalya",
          src="UN, AFP", tag="CONFIRMED",
@@ -86,7 +89,7 @@ STORIES = [
     dict(n=7, kind="grid", region="MIDDLE EAST", beat="Security", dl="Security", place="Jurf al-Sakher",
          src="Iraqi officials", tag="OFFICIAL",
          headline="Iraqi Army Enters Militia Stronghold",
-         summary="Troops move into the Kataib Hezbollah hub on the prime minister’s order.",
+         summary="Troops enter the Kataib Hezbollah base on the PM’s order.",
          art="art_07.png", pin=(44.2, 32.9)),
     dict(n=8, kind="grid", region="EUROPE", beat="Labour", dl="Labour", place="Rome",
          src="La Repubblica, AP", tag="CONFIRMED",
@@ -96,7 +99,7 @@ STORIES = [
     dict(n=9, kind="grid", region="ASIA-PACIFIC", beat="Economy", dl="Economy", place="Tokyo",
          src="MIC, Japan Times", tag="OFFICIAL",
          headline="Japan Inflation Rises to 2.3% in October",
-         summary="Core CPI is 2.2%; the data lift bets on a December BOJ rate hike.",
+         summary="Core CPI is 2.2%, lifting bets on a December BOJ hike.",
          art="art_09.png", pin=(139.7, 35.7)),
     dict(n=10, kind="grid", region="ASIA-PACIFIC", beat="Courts", dl="Courts", place="Seoul",
          src="Korea Herald", tag="REPORTED",
@@ -180,7 +183,9 @@ REGION_LABEL = {"GLOBAL/SCIENCE": "GLOBAL/SCI."}
 REGION_COLORS = mapgen.REGION_COLORS
 REGION_COUNTS = {r: sum(1 for s in STORIES if s["region"] == r) for r in REGION_ORDER}
 BEATS = sorted({s["beat"] for s in STORIES})
-TAG_COLORS = {"CONFIRMED": "#1D6F6A", "OFFICIAL": "#16243A", "REPORTED": "#A85F12"}
+# certainty tag: (text, tint) — a subtle tinted pill on the dateline row
+TAG_COLORS = {"CONFIRMED": ("#17605B", "#DCEDEA"), "OFFICIAL": ("#16243A", "#E2E7EF"),
+              "REPORTED": ("#8F500E", "#F5E6D2")}
 
 STATS = [
     ("3", "bridges over the Dnipro damaged in Kyiv strikes"),
@@ -229,27 +234,36 @@ def keep_hyphens(text: str) -> str:
     return re.sub(r"(\S+-\S+)", r'<span class="nb">\1</span>', esc(text))
 
 
+def headline_html(s: dict) -> str:
+    """Leads carry fixed two-line breaks (\\n); card headlines wrap balanced."""
+    return "<br>".join(keep_hyphens(line) for line in s["headline"].split("\n"))
+
+
 def card_html(s: dict) -> str:
     col = REGION_COLORS[s["region"]]
     tag = s["tag"]
+    fg, bg = TAG_COLORS[tag]
+    # leads print PLACE · BEAT; the 188 px cards print the place only, so the
+    # certainty tag fits on the dateline row without clipping
+    where = f"{s['place']} · {s['dl']}" if s["kind"] == "hero" else s["place"]
     return f'''
     <article class="card {s['kind']}" data-story="{s['n']}" data-region="{esc(s['region'])}">
       <img class="art" src="data:image/png;base64,{b64(ASSETS / s['art'])}" alt="">
-      <div class="kicker">{badge(s)}<span class="place" style="color:{col}">{esc(s['place'])} · {esc(s['dl'])}</span></div>
-      <h2><span class="hl">{keep_hyphens(s['headline'])}</span></h2>
-      <p class="summary"><span class="sum">{esc(s['summary'])} <span class="src">({esc(s['src'])})</span>&nbsp;<span class="tg" style="background:{TAG_COLORS[tag]}">{tag}</span></span></p>
+      <div class="kicker">{badge(s)}<span class="place" style="color:{col}">{esc(where)}</span><span class="tg" style="color:{fg};background:{bg}">{tag}</span></div>
+      <h2><span class="hl">{headline_html(s)}</span></h2>
+      <p class="summary"><span class="sum">{esc(s['summary'])} <span class="src">({esc(s['src'])})</span></span></p>
     </article>'''
 
 
 def brief_html(s: dict) -> str:
     return f'''
       <div class="brief" data-story="{s['n']}" data-region="{esc(s['region'])}">
-        {badge(s, 'bnum')}<p class="btext"><span class="bt"><b>{esc(s['place'])}</b> {esc(s['text'])} <i>({esc(s['src'])})</i></span></p>
+        <span class="bnum" style="color:{REGION_COLORS[s['region']]}">{s['n']}</span><p class="btext"><span class="bt"><b>{esc(s['place'])}</b> {esc(s['text'])} <i>({esc(s['src'])})</i></span></p>
       </div>'''
 
 
 def measure_briefs() -> dict[int, float]:
-    """PIL width of each one-line brief: number disc + gap + bold place + text + source."""
+    """PIL width of each one-line brief: numeral box + gap + bold place + text + source."""
     bold = ImageFont.truetype(str(LATO / "Lato-Bold.ttf"), BRIEF_PX)
     reg = ImageFont.truetype(str(LATO / "Lato-Regular.ttf"), BRIEF_PX)
     ital = ImageFont.truetype(str(LATO / "Lato-Italic.ttf"), BRIEF_PX)
@@ -257,7 +271,7 @@ def measure_briefs() -> dict[int, float]:
     for s in STORIES:
         if s["kind"] != "brief":
             continue
-        w = 15 + 5 + bold.getlength(s["place"]) + reg.getlength(" " + s["text"] + " ") \
+        w = BNUM_W + BNUM_GAP + bold.getlength(s["place"]) + reg.getlength(" " + s["text"] + " ") \
             + ital.getlength(f"({s['src']})")
         out[s["n"]] = round(w, 1)
     return out
@@ -320,10 +334,10 @@ body {{ font-family:'LatoX', sans-serif; color:#121822; -webkit-font-smoothing:a
 .rg span {{ font:900 10px/1 'LatoX'; letter-spacing:.05em; }}
 .rg b {{ font:900 10.5px/1 'LatoX'; }}
 .row {{ display:flex; }}
-.row.heroes {{ top:183px; height:234px; gap:20px; }}
-.row.grid {{ height:169px; gap:12px; }}
-.row.g1 {{ top:422px; }}
-.row.g2 {{ top:597px; }}
+.row.heroes {{ top:183px; height:242px; gap:20px; }}
+.row.grid {{ height:165px; gap:12px; }}
+.row.g1 {{ top:430px; }}
+.row.g2 {{ top:600px; }}
 .rule {{ position:absolute; left:18px; right:18px; height:0; border-top:1px solid #DCD6C8; }}
 .card {{ position:relative; display:flex; flex-direction:column; }}
 .card + .card::before {{ content:''; position:absolute; top:0; bottom:0; border-left:1px solid #DCD6C8; }}
@@ -340,13 +354,13 @@ body {{ font-family:'LatoX', sans-serif; color:#121822; -webkit-font-smoothing:a
 .grid .num {{ flex:0 0 14px; width:14px; height:14px; line-height:14px; }}
 .place {{ flex:1; min-width:0; font:900 10px/12px 'LatoX'; height:12px; letter-spacing:.05em; text-transform:uppercase; white-space:nowrap; overflow:hidden; }}
 .grid .place {{ letter-spacing:.03em; }}
-h2 {{ margin:3px 0 0 0; font:700 16.5px/18px 'LibSerif'; color:#0E121A; letter-spacing:-.003em; text-wrap:balance; }}
+h2 {{ margin:3px 0 0 0; font:700 20px/21px 'LibSerif'; color:#0E121A; letter-spacing:-.006em; white-space:nowrap; }}
 .nb {{ white-space:nowrap; }}
-.grid h2 {{ margin-top:3px; font-size:13.5px; line-height:15px; }}
-.summary {{ margin:3px 0 0 0; font:400 10.5px/13px 'LatoX'; color:#222831; }}
+.grid h2 {{ margin-top:3px; font-size:14px; line-height:15.5px; letter-spacing:-.003em; white-space:normal; text-wrap:balance; }}
+.summary {{ margin:3px 0 0 0; font:400 10.8px/13px 'LatoX'; color:#222831; }}
 .grid .summary {{ font-size:10px; line-height:12.2px; }}
 .src {{ font-style:italic; color:#585D66; }}
-.tg {{ display:inline-block; padding:0 3px; border-radius:2px; color:#FFF; font:900 9px/11px 'LatoX'; letter-spacing:.05em; vertical-align:.5px; white-space:nowrap; }}
+.tg {{ flex:0 0 auto; margin-left:auto; padding:1px 4px 0; border-radius:2px; font:900 9px/11px 'LatoX'; letter-spacing:.05em; white-space:nowrap; }}
 .bottom {{ top:767px; height:188px; display:flex; gap:14px; border-top:2.5px solid #121822; padding-top:3px; }}
 .mapcol {{ flex:0 0 {mapgen.W}px; width:{mapgen.W}px; }}
 .briefcol {{ flex:1; min-width:0; position:relative; }}
@@ -359,8 +373,8 @@ h2 {{ margin:3px 0 0 0; font:700 16.5px/18px 'LibSerif'; color:#0E121A; letter-s
 .briefgrid {{ display:flex; gap:12px; margin-top:2px; }}
 .bcol {{ flex:1 1 0; min-width:0; position:relative; }}
 .bcol + .bcol::before {{ content:''; position:absolute; left:-6.5px; top:2px; bottom:2px; border-left:1px solid #DCD6C8; }}
-.brief {{ height:13.8px; display:flex; align-items:center; gap:5px; }}
-.bnum {{ flex:0 0 15px; width:15px; height:12.5px; border-radius:6px; color:#FFF; font:900 9.5px/12.5px 'LatoX'; text-align:center; }}
+.brief {{ height:13.8px; display:flex; align-items:center; gap:{BNUM_GAP}px; }}
+.bnum {{ flex:0 0 {BNUM_W}px; width:{BNUM_W}px; font:700 {BNUM_PX}px/13px 'LatoX'; font-variant-numeric:tabular-nums; }}
 .btext {{ margin:0; font:400 10.5px/13px 'LatoX'; color:#1E242E; white-space:nowrap; }}
 .btext b {{ font-weight:700; color:#0E121A; }}
 .btext i {{ color:#585D66; }}
@@ -379,9 +393,9 @@ h2 {{ margin:3px 0 0 0; font:700 16.5px/18px 'LibSerif'; color:#0E121A; letter-s
   <div class="band stats">{stats}</div>
   <div class="band regionbar">{regions}</div>
   <div class="band row heroes">{''.join(card_html(s) for s in heroes)}</div>
-  <div class="rule" style="top:419.5px"></div>
+  <div class="rule" style="top:427.5px"></div>
   <div class="band row grid g1">{''.join(card_html(s) for s in grid[:5])}</div>
-  <div class="rule" style="top:594.5px"></div>
+  <div class="rule" style="top:597.5px"></div>
   <div class="band row grid g2">{''.join(card_html(s) for s in grid[5:])}</div>
   <div class="band bottom">
     <div class="mapcol">
@@ -459,6 +473,10 @@ AUDIT_JS = r'''() => {
   const briefLines = briefs.map(b => lines(b.querySelector('.bt')));
   const briefWidths = briefs.map(b => +(R(b.querySelector('.bt')).right - R(b).x).toFixed(1));
   const statLines = [...document.querySelectorAll('.stat .s2')].map(lines);
+  const tagPlacement = cards.map(c => [c.querySelectorAll('.kicker .tg').length, c.querySelectorAll('.summary .tg').length]);
+  const briefNums = briefs.map(b => { const n = b.querySelector('.bnum'), cs = getComputedStyle(n);
+    return {n: +n.textContent, bg: cs.backgroundColor, radius: cs.borderRadius, fs: parseFloat(cs.fontSize), fw: cs.fontWeight}; });
+  const heroBottoms = cards.filter(c => c.classList.contains('hero')).map(c => +R(c.querySelector('.sum')).bottom.toFixed(1));
 
   let minHtml = 99, minHtmlText = '', minSvg = 99;
   document.querySelectorAll('body *').forEach(el => {
@@ -483,7 +501,7 @@ AUDIT_JS = r'''() => {
   ['.regionbar', '.row.heroes', '.row.g1', '.row.g2', '.bottom', '.mapbox', '.datecheck', '.footer'].forEach(s => { const r = R(document.querySelector(s)); rects[s] = [r.x, r.y, r.right, r.bottom].map(v => +v.toFixed(1)); });
   const cardBottoms = cards.map(c => +(R(c.querySelector('.summary')).bottom - R(c).y).toFixed(1));
   return {doc, stories, regionCounts, regionTagged, overflows, textClip, blockOverlaps, bandOverlaps, cardOverlaps,
-          pinCount: pins.length, pinNumbers, pinLabels, pinR, pinOverlaps, pinsOutside, headlineLines, summaryLines, briefLines,
+          tagPlacement, briefNums, heroBottoms, pinCount: pins.length, pinNumbers, pinLabels, pinR, pinOverlaps, pinsOutside, headlineLines, summaryLines, briefLines,
           briefWidths, statLines, minHtml, minHtmlText, minSvg, tagMin, imagesLoaded, artSizes, stats, kicker,
           pageBottom: R(document.querySelector('.footer')).bottom, rects, cardBottoms,
           wireSlack: +(bc.bottom - Math.max(...[...document.querySelectorAll('.bcol')].map(e => R(e).bottom))).toFixed(1),
@@ -502,16 +520,16 @@ def check_stories() -> list[str]:
                 f.append(f"story {s['n']} contains date-check-only text '{w}'")
     nums = [s["n"] for s in STORIES]
     if nums != list(range(1, 38)):
-        f.append(f"v6 needs stories 1-37 in order, got {nums}")
+        f.append(f"v7 needs stories 1-37 in order, got {nums}")
     kinds = [s["kind"] for s in STORIES]
     if kinds != ["hero"] * 3 + ["grid"] * 10 + ["brief"] * 24:
-        f.append("v6 needs 3 leads, 10 cards and 24 briefs")
+        f.append("v7 needs 3 leads, 10 cards and 24 briefs")
     for n, w in measure_briefs().items():
         if w > BRIEF_MAX_W:
             f.append(f"brief {n} is {w}px wide at {BRIEF_PX}px; max {BRIEF_MAX_W}px on one line")
     for v, (sn, phrase) in STAT_SOURCES.items():
         s = STORIES[sn - 1]
-        if phrase not in s["headline"] + " " + s["summary"]:
+        if phrase not in s["headline"].replace("\n", " ") + " " + s["summary"]:
             f.append(f"stat {v} not backed by story {sn} ('{phrase}')")
     if len(BEATS) < 25:
         f.append(f"only {len(BEATS)} beats")
@@ -537,10 +555,20 @@ def check_audit(a: dict) -> list[str]:
         f.append(f"pins {a['pinNumbers']} labels {a['pinLabels']} != 1-13")
     if any(not 8 <= r <= 9 for r in a["pinR"]):
         f.append(f"pin radius {a['pinR']}")
-    if any(x > 2 for x in a["headlineLines"]):
-        f.append(f"headline lines {a['headlineLines']}")
-    if any(x > 3 for x in a["summaryLines"]) or min(a["summaryLines"]) < 1:
-        f.append(f"summary lines {a['summaryLines']}")
+    # v7: every headline is exactly two lines; lead summaries three, card summaries two
+    if any(x != 2 for x in a["headlineLines"]):
+        f.append(f"headline lines must all be 2: {a['headlineLines']}")
+    want = [3] * 3 + [2] * 10
+    if a["summaryLines"] != want:
+        f.append(f"summary lines {a['summaryLines']} != {want}")
+    if len(set(a["heroBottoms"])) != 1:
+        f.append(f"lead summaries end on different baselines: {a['heroBottoms']}")
+    if any(k != 1 or body for k, body in a["tagPlacement"]):
+        f.append(f"certainty tag must sit on the dateline only: {a['tagPlacement']}")
+    for b in a["briefNums"]:
+        if b["bg"] not in ("rgba(0, 0, 0, 0)", "transparent") or b["radius"] != "0px" \
+                or b["fs"] != BNUM_PX or b["fw"] != "700":
+            f.append(f"wire numeral must be plain bold {BNUM_PX}px: {b}")
     if any(x != 1 for x in a["briefLines"]):
         f.append(f"briefs must be one line: {a['briefLines']}")
     if max(a["briefWidths"]) > BRIEF_MAX_W:
@@ -612,7 +640,7 @@ def main() -> int:
         page.wait_for_timeout(400)
         a = page.evaluate(AUDIT_JS)
         failures = check_audit(a)
-        keys = ("pageBottom", "wireSlack", "mapSlack", "headlineLines", "summaryLines", "briefLines",
+        keys = ("pageBottom", "heroBottoms", "wireSlack", "mapSlack", "headlineLines", "summaryLines", "briefLines",
                 "statLines", "cardBottoms", "minHtml", "minSvg", "tagMin", "regionCounts", "pinCount", "rects")
         print("metrics:", json.dumps({k: a[k] for k in keys}, ensure_ascii=False))
         print("brief widths (DOM):", a["briefWidths"])
