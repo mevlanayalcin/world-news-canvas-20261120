@@ -1,6 +1,7 @@
-"""Locator map for the v3 front page: Natural Earth 110m land, Miller projection.
+"""Locator map for the v5 front page: Natural Earth 110m land, Miller projection.
 
-The map is emitted as an inline SVG at its printed size (300 x 130), so pins
+Dark ocean, cream land. The map is emitted as an inline SVG at its printed
+size (300 px wide, height set by the projection), so pins
 and numbers are vector-sharp on the page. Pins that would overlap are pushed
 apart by a fixed, deterministic relaxation and tied back with a leader line.
 """
@@ -13,16 +14,16 @@ from pathlib import Path
 BASE = Path(__file__).resolve().parent
 ASSETS = BASE / "assets"
 
-W, H = 300, 130
-LON0, LON1 = -100.0, 180.0
-LAT_TOP, LAT_BOT = 62.0, -46.0
+W = 300
+LON0, LON1 = -126.0, 180.0
+LAT_TOP, LAT_BOT = 64.0, -47.0
 PIN_R = 6.2
 MIN_GAP = 13.0  # centre-to-centre distance between pins, px
 
 REGION_COLORS = {
     "ASIA-PACIFIC": "#9A1B1F",
     "AMERICAS": "#1D6F6A",
-    "EUROPE": "#1B3A6B",
+    "EUROPE": "#24508F",
     "MIDDLE EAST": "#A85F12",
     "AFRICA": "#2E7D50",
     "OCEANIA": "#5E3A7A",
@@ -36,6 +37,7 @@ def miller(lat: float) -> float:
 
 
 Y_TOP, Y_BOT = miller(LAT_TOP), miller(LAT_BOT)
+H = round(W * (Y_TOP - Y_BOT) / math.radians(LON1 - LON0))
 
 
 def project(lon: float, lat: float) -> tuple[float, float]:
@@ -111,16 +113,16 @@ def svg(pins) -> str:
         col = REGION_COLORS[region]
         if math.hypot(px - tx, py - ty) > PIN_R * 0.6:
             leaders.append(f'<line x1="{tx:.1f}" y1="{ty:.1f}" x2="{px:.1f}" y2="{py:.1f}"/>')
-            dots.append(f'<circle cx="{tx:.1f}" cy="{ty:.1f}" r="1.6" fill="{col}"/>')
+            dots.append(f'<circle cx="{tx:.1f}" cy="{ty:.1f}" r="1.7" fill="#F2B83C" stroke="#121822" stroke-width="0.6"/>')
         marks.append(
             f'<g class="pin" data-pin="{n}"><circle cx="{px:.1f}" cy="{py:.1f}" r="{PIN_R}" fill="{col}"/>'
             f'<text x="{px:.1f}" y="{py + 3.1:.1f}">{n}</text></g>'
         )
     return f'''<svg class="mapsvg" xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}">
-<rect width="{W}" height="{H}" fill="#D9E8F1"/>
-<g stroke="#C3D6E3" stroke-width="0.8">{''.join(grid)}</g>
-<path d="{land_path()}" fill="#E9DFC6" stroke="#8E9A9E" stroke-width="0.6"/>
-<g stroke="#141923" stroke-width="1">{''.join(leaders)}</g>
+<rect width="{W}" height="{H}" fill="#1E2B3B"/>
+<g stroke="#2E4056" stroke-width="0.8">{''.join(grid)}</g>
+<path d="{land_path()}" fill="#E6DBC0" stroke="#F7F3E9" stroke-width="0.5"/>
+<g stroke="#F2B83C" stroke-width="0.9">{''.join(leaders)}</g>
 {''.join(dots)}
 <g font-family="LatoX" font-weight="900" font-size="9" fill="#FFFFFF" text-anchor="middle" stroke="none">
 <g stroke="#FFFFFF" stroke-width="1.3">{''.join(m.replace('<text', '<text stroke="none"') for m in marks)}</g>

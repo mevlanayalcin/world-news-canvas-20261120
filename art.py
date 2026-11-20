@@ -1,9 +1,17 @@
-"""Editorial illustrations for the Friday 20 November 2026 front page (v4).
+"""Editorial illustrations for the Friday 20 November 2026 front page (v5).
 
-Every picture is drawn from scratch with Pillow at twice its printed size and
-reduced with Lanczos, so edges are supersampled. Coordinates are written as
-fractions of the 2x canvas (X(0.5) is the horizontal middle), which keeps each
-drawing correct at the hero size (310x120) and the grid size (180x72).
+Each picture has two layers:
+
+* a scene, drawn from scratch with Pillow at twice its printed size and
+  reduced with Lanczos (supersampled edges). Scene coordinates are fractions
+  of the scene area below the banner, so X(0.5) is the horizontal middle;
+* a typographic layer drawn at printed size after the reduction, so the
+  banner, sub-label and attribution pill are rendered by FreeType at their
+  final pixel size and stay sharp: a solid full-width title banner, (leads
+  only) a dark sub-label, and a dark attribution pill.
+
+Lead art is 316x144 (34 px banner, 24 px type); card art is 188x86 (22 px
+banner, 16 px type).
 """
 from __future__ import annotations
 
@@ -17,47 +25,58 @@ ASSETS = BASE / "assets"
 
 # ---- palette ---------------------------------------------------------------
 PAPER = (255, 253, 247)
-CREAM = (246, 241, 230)
-INK = (20, 25, 35)
+CREAM = (247, 243, 233)
+INK = (18, 24, 34)
 CRIMSON = (154, 27, 31)
 NAVY = (27, 42, 65)
-TEAL = (29, 111, 106)
 SKY = (176, 212, 232)
-SKY_D = (120, 168, 200)
 SEA = (40, 108, 140)
-SEA_D = (26, 78, 108)
-SAND = (232, 214, 176)
 GOLD = (242, 184, 60)
 ORANGE = (236, 112, 40)
 GREEN = (40, 128, 76)
 GREY = (130, 136, 144)
-STONE = (214, 204, 184)
 WHITE = (255, 255, 255)
 RED = (206, 38, 44)
 BLUE = (40, 92, 160)
 
+# region colours (match mapgen.REGION_COLORS)
+C_EUROPE = (36, 80, 143)
+C_ASIA = (154, 27, 31)
+C_AMERICAS = (29, 111, 106)
+C_MIDEAST = (168, 95, 18)
+C_AFRICA = (46, 125, 80)
+C_OCEANIA = (94, 58, 122)
+C_GLOBAL = (74, 85, 99)
+
 FONT_DIR = Path("/usr/share/fonts/truetype")
 LATO_BLACK = FONT_DIR / "lato" / "Lato-Black.ttf"
 LATO_BOLD = FONT_DIR / "lato" / "Lato-Bold.ttf"
-SERIF_BOLD = FONT_DIR / "liberation" / "LiberationSerif-Bold.ttf"
+LATO_HEAVY = FONT_DIR / "lato" / "Lato-Heavy.ttf"
 
-HERO = (310, 120)
-GRID = (180, 72)
+HERO = (316, 144)
+GRID = (188, 86)
+HERO_BANNER = (34, 24)   # banner height, type size (printed px)
+GRID_BANNER = (22, 16)
 
-LABELS: list[tuple[str, str, tuple[float, float, float, float], tuple[int, int], int]] = []
+LABELS: list[dict] = []
+
+
+def font(path: Path, size: float) -> ImageFont.FreeTypeFont:
+    return ImageFont.truetype(str(path), round(size))
 
 
 class Art:
-    """A 2x drawing surface addressed in fractions of its width and height."""
+    """A 2x scene surface addressed in fractions of its width and height."""
 
-    def __init__(self, name: str, size: tuple[int, int], bg):
+    def __init__(self, name: str, size: tuple[int, int], bg, banner: tuple[int, int]):
         self.name = name
         self.size = size
-        self.W, self.H = size[0] * 2, size[1] * 2
+        self.banner_h, self.banner_pt = banner
+        self.scene = (size[0], size[1] - self.banner_h)
+        self.W, self.H = self.scene[0] * 2, self.scene[1] * 2
         self.im = Image.new("RGB", (self.W, self.H), bg)
         self.d = ImageDraw.Draw(self.im)
-        # stroke unit: 1 printed pixel at hero size, scaled down for the grid
-        self.u = self.W / 620
+        self.u = self.W / 632  # 1 printed px at lead width
 
     def X(self, f: float) -> float:
         return f * self.W
@@ -90,7 +109,7 @@ class Art:
         self.d.line(self.P(pts), fill=fill, width=self.lw(width), joint="curve")
 
     def circle(self, cx, cy, r, fill=None, outline=INK, width=1.5):
-        """r is a fraction of the canvas height so circles stay round."""
+        """r is a fraction of the scene height so circles stay round."""
         x, y, rr = self.X(cx), self.Y(cy), r * self.H
         self.d.ellipse([x - rr, y - rr, x + rr, y + rr], fill=fill, outline=outline,
                        width=self.lw(width) if outline else 0)
@@ -108,43 +127,64 @@ class Art:
             pts.append((x + q * math.cos(a), y + q * math.sin(a)))
         self.d.polygon(pts, fill=fill)
 
-    def text(self, cx, cy, s, size, fill=INK, path=LATO_BLACK):
-        f = ImageFont.truetype(str(path), round(size * 2))
-        self.d.text((self.X(cx), self.Y(cy)), s, font=f, fill=fill, anchor="mm")
+    def gradient(self, top, bottom, y0=0.0, y1=1.0, steps=24):
+        for i in range(steps):
+            t = i / (steps - 1)
+            col = tuple(int(a + (b - a) * t) for a, b in zip(top, bottom))
+            ya = y0 + (y1 - y0) * i / steps
+            self.rect(0, ya, 1, ya + (y1 - y0) / steps + 0.002, fill=col, outline=None)
 
-    def tag(self, s, x, y, size=13, fg=WHITE, bg=CRIMSON, anchor="ll"):
-        """A solid badge; x,y is its bottom-left (ll) or top-right (tr) corner.
-
-        size is the printed font size in page pixels.
-        """
-        f = ImageFont.truetype(str(LATO_BLACK), round(size * 2))
-        bb = self.d.textbbox((0, 0), s, font=f)
+    # ---- printed-size typography ------------------------------------------
+    def finish(self, banner: str, color, sub: str | None = None, attr: str | None = None):
+        scene = self.im.resize(self.scene, Image.LANCZOS)
+        scene = scene.filter(ImageFilter.UnsharpMask(radius=0.6, percent=50, threshold=2))
+        out = Image.new("RGB", self.size, color)
+        out.paste(scene, (0, self.banner_h))
+        d = ImageDraw.Draw(out)
+        w, h = self.size
+        bh = self.banner_h
+        # 1 px ink rule under the banner
+        d.line([(0, bh - 1), (w, bh - 1)], fill=INK, width=1)
+        f = font(LATO_BLACK, self.banner_pt)
+        bb = d.textbbox((0, 0), banner, font=f)
         tw, th = bb[2] - bb[0], bb[3] - bb[1]
-        pad_x, pad_y = th * 0.55, th * 0.42
-        w, h = tw + 2 * pad_x, th + 2 * pad_y
-        X, Y = self.X(x), self.Y(y)
-        if anchor == "ll":
-            x0, y0 = X, Y - h
-        elif anchor == "tl":
-            x0, y0 = X, Y
-        else:  # tr
-            x0, y0 = X - w, Y
-        # 1 printed px ink keyline so every badge separates cleanly from the art
-        self.d.rounded_rectangle([x0, y0, x0 + w, y0 + h], radius=h * 0.18, fill=bg,
-                                 outline=INK, width=2)
-        self.d.text((x0 + pad_x - bb[0], y0 + pad_y - bb[1]), s, font=f, fill=fg)
-        LABELS.append((self.name, s, (x0, y0, x0 + w, y0 + h), (self.W, self.H), round(th / 2)))
-
-    def save(self):
-        out = self.im.resize(self.size, Image.LANCZOS)
-        out = out.filter(ImageFilter.UnsharpMask(radius=0.6, percent=55, threshold=2))
+        pad = 8 if w > 200 else 6
+        tx = pad - bb[0]
+        ty = (bh - 1 - th) / 2 - bb[1]
+        d.text((round(tx), round(ty)), banner, font=f, fill=WHITE)
+        self._label("banner", banner, (pad, ty + bb[1], pad + tw, ty + bb[3]), self.banner_pt, out.size,
+                    edge=(0, 0, w, bh))
+        if sub:
+            self._pill(d, sub, pad, bh + 5, 14, INK, CREAM, out.size, LATO_HEAVY, anchor="tl")
+        if attr:
+            if w > 200:
+                self._pill(d, attr.upper(), pad, h - 5, 11, WHITE, INK, out.size, LATO_BLACK, anchor="bl")
+            else:
+                self._pill(d, attr, w - 4, h - 4, 10.5, WHITE, INK, out.size, LATO_BOLD, anchor="br")
         ASSETS.mkdir(exist_ok=True)
         out.save(ASSETS / self.name, format="PNG", optimize=True)
+
+    def _pill(self, d, s, x, y, size, fg, bg, img_size, path, anchor):
+        f = font(path, size)
+        bb = d.textbbox((0, 0), s, font=f)
+        tw, th = bb[2] - bb[0], bb[3] - bb[1]
+        px, py = round(size * 0.45), round(size * 0.3)
+        bw, bht = tw + 2 * px, th + 2 * py
+        x0 = x if anchor in ("tl", "bl") else x - bw
+        y0 = y if anchor == "tl" else y - bht
+        d.rounded_rectangle([x0, y0, x0 + bw, y0 + bht], radius=3, fill=bg,
+                            outline=INK if bg != INK else None, width=1)
+        d.text((x0 + px - bb[0], y0 + py - bb[1]), s, font=f, fill=fg)
+        self._label("pill", s, (x0, y0, x0 + bw, y0 + bht), size, img_size, edge=(0, 0) + img_size)
+
+    def _label(self, kind, s, bbox, size, img_size, edge):
+        LABELS.append(dict(art=self.name, kind=kind, text=s, bbox=bbox, size=size,
+                           img=img_size, edge=edge))
 
 
 # ---- shared props ----------------------------------------------------------
 def person(a: Art, x, y, h, fill=INK, arms_up=False):
-    """A simple standing figure; y is the feet line, h its height (fractions)."""
+    """A standing figure; y is the feet line, h its height (fractions)."""
     hr = h * 0.13
     a.circle(x, y - h + hr, hr, fill=fill, outline=None)
     bw = h * 0.16 * a.H / a.W
@@ -168,8 +208,7 @@ def union_jack(a: Art, x0, y0, x1, y1):
     a.line([(x0, y0), (x1, y1)], RED, 2.4)
     a.line([(x1, y0), (x0, y1)], RED, 2.4)
     cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
-    hw = (x1 - x0) * 0.09
-    hh = (y1 - y0) * 0.16
+    hw, hh = (x1 - x0) * 0.09, (y1 - y0) * 0.16
     a.rect(cx - hw, y0, cx + hw, y1, fill=WHITE, outline=None)
     a.rect(x0, cy - hh, x1, cy + hh, fill=WHITE, outline=None)
     a.rect(cx - hw * 0.55, y0, cx + hw * 0.55, y1, fill=RED, outline=None)
@@ -186,32 +225,31 @@ def eu_flag(a: Art, x0, y0, x1, y1):
         a.star(cx + r * math.cos(t) * a.H / a.W, cy + r * math.sin(t), (y1 - y0) * 0.055, (255, 204, 0))
 
 
-# ---- H1. Kyiv bridges ------------------------------------------------------
+def flagpole(a: Art, x, y_top, y_bot):
+    a.line([(x, y_top), (x, y_bot)], INK, 1.6)
+
+
+# ---- 1. Kyiv bridges -------------------------------------------------------
 def art_kyiv():
-    a = Art("art_01.png", HERO, (64, 92, 128))
-    # pre-dawn sky gradient
-    for i in range(20):
-        t = i / 19
-        col = tuple(int(c0 + (c1 - c0) * t) for c0, c1 in zip((44, 62, 96), (214, 150, 110)))
-        a.rect(0, i * 0.03, 1, i * 0.03 + 0.031, fill=col, outline=None)
-    # far bank skyline + Lavra domes
-    a.poly([(0, 0.52), (0.06, 0.47), (0.12, 0.49), (0.2, 0.44), (0.28, 0.48), (0.36, 0.46),
-            (0.44, 0.5), (0.44, 0.6), (0, 0.6)], fill=(52, 60, 78), outline=None)
-    a.poly([(0.58, 0.6), (0.64, 0.46), (0.86, 0.44), (0.94, 0.5), (1, 0.48), (1, 0.6)],
+    a = Art("art_01.png", HERO, (64, 92, 128), HERO_BANNER)
+    a.gradient((40, 56, 92), (214, 150, 110), 0, 0.6)
+    # far bank skyline + Lavra bell tower and dome
+    a.poly([(0, 0.5), (0.06, 0.44), (0.12, 0.47), (0.2, 0.4), (0.28, 0.45), (0.36, 0.43),
+            (0.44, 0.48), (0.44, 0.6), (0, 0.6)], fill=(52, 60, 78), outline=None)
+    a.poly([(0.58, 0.6), (0.64, 0.44), (0.86, 0.42), (0.94, 0.48), (1, 0.46), (1, 0.6)],
            fill=(66, 74, 90), outline=None)
-    a.rect(0.73, 0.38, 0.79, 0.58, fill=(222, 214, 196), outline=INK, width=1.2)
-    a.circle(0.76, 0.37, 0.065, fill=(214, 168, 46), outline=INK, width=1.2)
-    a.line([(0.76, 0.30), (0.76, 0.21)], INK, 1.5)
-    a.line([(0.745, 0.245), (0.775, 0.245)], INK, 1.5)
+    a.rect(0.79, 0.3, 0.85, 0.56, fill=(222, 214, 196), outline=INK, width=1.2)
+    a.circle(0.82, 0.29, 0.07, fill=(214, 168, 46), outline=INK, width=1.2)
+    a.line([(0.82, 0.21), (0.82, 0.1)], INK, 1.5)
+    a.line([(0.805, 0.15), (0.835, 0.15)], INK, 1.5)
     # river Dnipro
     a.rect(0, 0.6, 1, 1, fill=(36, 74, 108), outline=None)
     for k in range(6):
         y = 0.7 + k * 0.05
-        a.line([(0.04 + (k % 2) * 0.1, y), (0.16 + (k % 2) * 0.1, y)], (110, 156, 190), 1.2)
         a.line([(0.62 + (k % 3) * 0.08, y), (0.74 + (k % 3) * 0.08, y)], (110, 156, 190), 1.2)
-    # three bridges stacked in depth; the near one broken
-    for k, (y, th, col) in enumerate(((0.56, 0.026, (176, 182, 190)), (0.63, 0.034, (196, 200, 206)),
-                                      (0.72, 0.05, (226, 226, 222)))):
+    # three bridges in depth, each struck
+    for k, (y, th, col) in enumerate(((0.55, 0.028, (176, 182, 190)), (0.63, 0.036, (196, 200, 206)),
+                                      (0.73, 0.055, (226, 226, 222)))):
         if k < 2:
             a.rect(0, y, 1, y + th, fill=col, outline=INK, width=1)
             for px in (0.15, 0.35, 0.55, 0.75, 0.95):
@@ -219,75 +257,65 @@ def art_kyiv():
         else:
             a.poly([(0, y), (0.42, y), (0.46, y + th + 0.03), (0, y + th)], fill=col, outline=INK, width=1.2)
             a.poly([(0.58, y + 0.02), (1, y), (1, y + th), (0.55, y + th + 0.04)], fill=col, outline=INK, width=1.2)
-            for px in (0.1, 0.3, 0.75, 0.92):
-                a.rect(px - 0.009, y + th, px + 0.009, 0.95, fill=(80, 86, 96), outline=INK, width=0.8)
-            # falling debris
-            for dx, dy, s in ((0.47, 0.84, 0.018), (0.5, 0.9, 0.012), (0.53, 0.82, 0.015)):
+            for px in (0.3, 0.75, 0.92):
+                a.rect(px - 0.009, y + th, px + 0.009, 0.97, fill=(80, 86, 96), outline=INK, width=0.8)
+            for dx, dy, s in ((0.47, 0.86, 0.018), (0.5, 0.92, 0.012), (0.53, 0.84, 0.015)):
                 a.rect(dx - s, dy - s, dx + s, dy + s, fill=(90, 90, 96), outline=INK, width=0.8)
-    # missile streaks and blast
-    a.line([(0.08, 0.02), (0.3, 0.28), (0.47, 0.62)], (255, 230, 190), 2.4)
-    a.line([(0.95, 0.04), (0.78, 0.3), (0.66, 0.52)], (255, 230, 190), 2.0)
-    bx, by = 0.5, 0.66
+    # missile streaks and blasts on all three crossings
+    a.line([(0.3, 0.02), (0.42, 0.3), (0.5, 0.7)], (255, 230, 190), 2.4)
+    a.line([(0.98, 0.02), (0.8, 0.3), (0.68, 0.6)], (255, 230, 190), 2.0)
+    bx, by = 0.5, 0.7
     for i in range(12):
         t = i * math.pi / 6
-        a.line([(bx, by), (bx + 0.07 * math.cos(t) * a.H / a.W, by + 0.14 * math.sin(t))], ORANGE, 3)
+        a.line([(bx, by), (bx + 0.06 * math.cos(t) * a.H / a.W, by + 0.13 * math.sin(t))], ORANGE, 3)
     a.circle(bx, by, 0.075, fill=GOLD, outline=CRIMSON, width=2)
     a.circle(bx, by, 0.03, fill=WHITE, outline=None)
-    a.circle(0.66, 0.53, 0.04, fill=GOLD, outline=ORANGE, width=1.5)
-    a.tag("KYIV  ·  3 BRIDGES HIT", 0.025, 0.95, 14, WHITE, CRIMSON)
-    a.tag("DNIPRO RIVER", 0.975, 0.05, 10.5, INK, (242, 226, 196), anchor="tr")
-    a.save()
+    a.circle(0.68, 0.62, 0.045, fill=GOLD, outline=ORANGE, width=1.5)
+    a.circle(0.6, 0.56, 0.035, fill=GOLD, outline=ORANGE, width=1.5)
+    a.finish("KYIV · 3 BRIDGES HIT", C_EUROPE, "~110 missiles · 400 drones", "Officials’ count")
 
 
-# ---- H2. Cyclone Akvan -----------------------------------------------------
+# ---- 2. Cyclone Akvan ------------------------------------------------------
 def art_akvan():
-    a = Art("art_02.png", HERO, SEA)
+    a = Art("art_02.png", HERO, SEA, HERO_BANNER)
     a.rect(0, 0, 1, 1, fill=(52, 126, 156), outline=None)
-    # Bay of Bengal swell lines
     for k in range(7):
         y = 0.12 + k * 0.12
-        a.arc(0.2 + (k % 2) * 0.1, y + 0.1, 0.12, 200, 340, (120, 186, 208), 1.2)
-    # Odisha / Andhra coast (land on the left, sea on the right)
-    a.poly([(0, 0), (0.46, 0), (0.42, 0.18), (0.36, 0.34), (0.30, 0.52), (0.22, 0.72),
-            (0.12, 0.9), (0.06, 1), (0, 1)], fill=(206, 196, 150), outline=INK, width=1.5)
-    a.poly([(0, 0), (0.30, 0), (0.25, 0.2), (0.18, 0.42), (0.1, 0.62), (0, 0.8)],
+        a.arc(0.62 + (k % 2) * 0.1, y + 0.1, 0.12, 200, 340, (120, 186, 208), 1.2)
+    # Odisha coast: land on the left, Bay of Bengal on the right
+    a.poly([(0, 0), (0.5, 0), (0.46, 0.18), (0.4, 0.34), (0.34, 0.52), (0.26, 0.72),
+            (0.16, 0.9), (0.1, 1), (0, 1)], fill=(206, 196, 150), outline=INK, width=1.5)
+    a.poly([(0, 0.3), (0.3, 0.3), (0.26, 0.45), (0.18, 0.62), (0.1, 0.8), (0, 0.95)],
            fill=(150, 176, 112), outline=None)
-    # cyclone spiral over the sea
-    cx, cy = 0.66, 0.46
-    for r, w in ((0.42, 5), (0.33, 4.5), (0.24, 4), (0.15, 3.5)):
+    cx, cy = 0.7, 0.5
+    for r, w in ((0.44, 5), (0.34, 4.5), (0.25, 4), (0.16, 3.5)):
         a.arc(cx, cy, r, 20, 300, WHITE, w)
         a.arc(cx, cy, r - 0.04, 200, 470, (206, 232, 240), w * 0.6)
     a.circle(cx, cy, 0.06, fill=(60, 120, 150), outline=WHITE, width=2.5)
-    # landfall track arrow toward Gopalpur
-    a.line([(0.9, 0.95), (0.78, 0.7), (0.66, 0.46), (0.47, 0.32)], GOLD, 2.4)
-    a.poly([(0.40, 0.29), (0.47, 0.25), (0.47, 0.37)], fill=GOLD, outline=None)
-    # Gopalpur pin
-    a.circle(0.36, 0.32, 0.045, fill=CRIMSON, outline=WHITE, width=2)
-    # shelter with evacuees on land
-    a.poly([(0.05, 0.56), (0.13, 0.46), (0.21, 0.56)], fill=CRIMSON, outline=INK, width=1.2)
-    a.rect(0.065, 0.56, 0.195, 0.7, fill=PAPER, outline=INK, width=1.2)
-    a.rect(0.115, 0.61, 0.145, 0.7, fill=INK, outline=None)
-    for i, x in enumerate((0.04, 0.22, 0.25)):
-        person(a, x, 0.74, 0.13 - i * 0.01)
-    # rain bands
+    # track arrow to Gopalpur, then weakening
+    a.line([(0.94, 0.98), (0.82, 0.74), (0.7, 0.5), (0.5, 0.36)], GOLD, 2.4)
+    a.poly([(0.43, 0.34), (0.5, 0.29), (0.5, 0.42)], fill=GOLD, outline=None)
+    a.circle(0.4, 0.36, 0.045, fill=CRIMSON, outline=WHITE, width=2)
+    # cyclone shelter with evacuees
+    a.poly([(0.05, 0.62), (0.13, 0.5), (0.21, 0.62)], fill=CRIMSON, outline=INK, width=1.2)
+    a.rect(0.065, 0.62, 0.195, 0.78, fill=PAPER, outline=INK, width=1.2)
+    a.rect(0.115, 0.68, 0.145, 0.78, fill=INK, outline=None)
+    for i, x in enumerate((0.23, 0.26, 0.29)):
+        person(a, x, 0.8, 0.15 - i * 0.012)
     raindrops(a, 0.02, 0.9, 26, (200, 228, 238), seed=3)
-    a.tag("GOPALPUR", 0.03, 0.14, 10.5, WHITE, NAVY, anchor="tl")
-    a.tag("CYCLONE AKVAN  ·  ODISHA", 0.025, 0.95, 14, WHITE, CRIMSON)
-    a.tag("372,000 EVACUATED", 0.975, 0.05, 10.5, INK, GOLD, anchor="tr")
-    a.save()
+    a.finish("CYCLONE AKVAN LANDS", C_ASIA, "372,000 evacuated · Odisha", "IMD · State")
 
 
-# ---- H3. Asia chip-stock rout ---------------------------------------------
+# ---- 3. Asia chip-stock rout ----------------------------------------------
 def art_chips():
-    a = Art("art_03.png", HERO, (16, 22, 34))
+    a = Art("art_03.png", HERO, (16, 22, 34), HERO_BANNER)
     a.rect(0, 0, 1, 1, fill=(18, 24, 38), outline=None)
-    # faint price grid
     for k in range(1, 6):
         a.line([(0, k * 0.16), (1, k * 0.16)], (40, 50, 70), 1)
     for k in range(1, 10):
         a.line([(k * 0.1, 0), (k * 0.1, 1)], (32, 40, 58), 1)
-    # silicon wafer with dies (left)
-    cx, cy, r = 0.2, 0.52, 0.36
+    # silicon wafer (right)
+    cx, cy, r = 0.83, 0.56, 0.4
     a.circle(cx, cy, r, fill=(150, 164, 186), outline=(220, 228, 240), width=1.6)
     a.circle(cx, cy, r * 0.93, fill=(96, 112, 150), outline=None)
     rx = r * a.H / a.W
@@ -297,288 +325,326 @@ def art_chips():
             if math.hypot((x0 - cx) / rx, (y0 - cy) / r) < 0.82:
                 col = (196, 160, 70) if (i + j) % 3 else (226, 196, 110)
                 a.rect(x0 - rx * 0.085, y0 - r * 0.085, x0 + rx * 0.085, y0 + r * 0.085, fill=col, outline=None)
-    a.poly([(cx - rx * 0.12, cy + r * 0.98), (cx + rx * 0.12, cy + r * 0.98), (cx, cy + r * 0.88)],
-           fill=(18, 24, 38), outline=None)
-    # crack across the wafer
-    a.line([(0.1, 0.24), (0.16, 0.42), (0.13, 0.52), (0.22, 0.66), (0.19, 0.8)], (18, 24, 38), 2.6)
-    a.line([(0.1, 0.24), (0.16, 0.42), (0.13, 0.52), (0.22, 0.66), (0.19, 0.8)], (240, 90, 80), 1)
-    # falling candlesticks (right)
-    candles = [(0.44, 0.18, 0.30, 0.12, 0.36, False), (0.5, 0.22, 0.38, 0.16, 0.44, True),
-               (0.56, 0.34, 0.42, 0.28, 0.48, True), (0.62, 0.38, 0.52, 0.32, 0.58, True),
-               (0.68, 0.46, 0.5, 0.42, 0.56, False), (0.74, 0.5, 0.64, 0.44, 0.7, True),
-               (0.8, 0.6, 0.72, 0.54, 0.78, True), (0.86, 0.66, 0.84, 0.6, 0.9, True)]
+    crack = [(0.78, 0.2), (0.84, 0.4), (0.8, 0.52), (0.88, 0.68), (0.85, 0.9)]
+    a.line(crack, (18, 24, 38), 2.6)
+    a.line(crack, (240, 90, 80), 1)
+    # falling candlesticks (centre)
+    candles = [(0.08, 0.1, 0.22, 0.05, 0.28, True), (0.14, 0.2, 0.3, 0.14, 0.36, True),
+               (0.2, 0.3, 0.26, 0.24, 0.34, False), (0.26, 0.28, 0.44, 0.24, 0.5, True),
+               (0.32, 0.42, 0.52, 0.38, 0.58, True), (0.38, 0.5, 0.46, 0.44, 0.54, False),
+               (0.44, 0.48, 0.64, 0.42, 0.7, True), (0.5, 0.62, 0.74, 0.56, 0.8, True),
+               (0.56, 0.72, 0.9, 0.68, 0.96, True), (0.62, 0.86, 0.98, 0.8, 1.0, True)]
     for x, o, c, hi, lo, down in candles:
-        o, c, hi, lo = (0.2 + v * 0.62 for v in (o, c, hi, lo))
+        o, c, hi, lo = (0.08 + v * 0.86 for v in (o, c, hi, lo))
         col = (226, 56, 56) if down else (60, 190, 120)
         a.line([(x, hi), (x, lo)], col, 1.4)
-        a.rect(x - 0.018, min(o, c), x + 0.018, max(o, c), fill=col, outline=None)
-    a.tag("TAIEX −6.23%", 0.975, 0.05, 12, WHITE, (200, 34, 40), anchor="tr")
-    a.tag("KOSPI −5.2%  ·  NIKKEI −5.1%", 0.025, 0.05, 10, INK, GOLD, anchor="tl")
-    a.tag("ASIA  ·  AI & CHIP ROUT", 0.025, 0.95, 14, WHITE, CRIMSON)
-    a.save()
+        a.rect(x - 0.016, min(o, c), x + 0.016, max(o, c), fill=col, outline=None)
+    a.line([(0.06, 0.12), (0.66, 0.94)], (255, 120, 110), 1.2)
+    a.finish("TAIEX −6.23% · AI ROUT", C_ASIA, "Kospi −5.21% · Nikkei −5.06%", "Market close")
 
 
-# ---- G1. UK-EU summit ------------------------------------------------------
+# ---- 4. UK-EU reset --------------------------------------------------------
 def art_euuk():
-    a = Art("art_04.png", GRID, (214, 228, 240))
+    a = Art("art_04.png", GRID, (214, 228, 240), GRID_BANNER)
     a.rect(0, 0, 1, 1, fill=(214, 228, 240), outline=None)
-    a.rect(0.32, 0.08, 0.68, 0.7, fill=(178, 200, 220), outline=INK, width=1.4)
+    a.rect(0.32, 0.04, 0.68, 0.7, fill=(178, 200, 220), outline=INK, width=1.4)
     for i in range(7):
-        a.line([(0.32 + i * 0.06, 0.08), (0.32 + i * 0.06, 0.7)], (140, 166, 190), 1)
-    a.circle(0.5, 0.36, 0.2, fill=(236, 170, 70), outline=INK, width=1.4)
-    a.circle(0.5, 0.36, 0.11, fill=(250, 214, 140), outline=None)
-    a.line([(0.06, 0.06), (0.06, 0.92)], INK, 2)
-    eu_flag(a, 0.065, 0.06, 0.28, 0.4)
-    a.line([(0.94, 0.06), (0.94, 0.92)], INK, 2)
-    union_jack(a, 0.725, 0.06, 0.935, 0.4)
-    a.rect(0, 0.78, 1, 1, fill=(196, 182, 156), outline=None)
-    a.rrect(0.22, 0.7, 0.78, 0.8, r=5, fill=NAVY, outline=INK, width=1.2)
-    person(a, 0.4, 0.74, 0.4, fill=(36, 44, 60))
-    person(a, 0.6, 0.74, 0.4, fill=(36, 44, 60))
-    a.line([(0.42, 0.55), (0.5, 0.59), (0.58, 0.55)], (36, 44, 60), 4)
-    a.circle(0.5, 0.59, 0.045, fill=(232, 196, 160), outline=INK, width=1)
-    a.tag("UK–EU  ·  3 DEALS", 0.03, 0.95, 10.5, WHITE, NAVY)
-    a.tag("100K / YR", 0.97, 0.47, 9.5, INK, GOLD, anchor="tr")
-    a.save()
+        a.line([(0.32 + i * 0.06, 0.04), (0.32 + i * 0.06, 0.7)], (140, 166, 190), 1)
+    a.line([(0.06, 0.04), (0.06, 0.95)], INK, 2)
+    eu_flag(a, 0.065, 0.06, 0.28, 0.46)
+    a.line([(0.94, 0.04), (0.94, 0.95)], INK, 2)
+    union_jack(a, 0.725, 0.06, 0.935, 0.46)
+    a.rect(0, 0.8, 1, 1, fill=(196, 182, 156), outline=None)
+    a.rrect(0.22, 0.72, 0.78, 0.84, r=5, fill=NAVY, outline=INK, width=1.2)
+    person(a, 0.4, 0.76, 0.5, fill=(36, 44, 60))
+    person(a, 0.6, 0.76, 0.5, fill=(36, 44, 60))
+    a.line([(0.42, 0.52), (0.5, 0.57), (0.58, 0.52)], (36, 44, 60), 4)
+    a.circle(0.5, 0.57, 0.055, fill=(232, 196, 160), outline=INK, width=1)
+    a.finish("UK–EU DEAL", C_EUROPE, attr="Agreed · Reuters")
 
-# ---- G2. COP31 -------------------------------------------------------------
+
+# ---- 5. COP31 --------------------------------------------------------------
 def art_cop31():
-    a = Art("art_05.png", GRID, (244, 196, 116))
-    a.rect(0, 0, 1, 0.72, fill=(246, 204, 128), outline=None)
-    a.rect(0, 0.72, 1, 1, fill=(44, 132, 150), outline=None)
-    # globe with thermometer
-    a.circle(0.24, 0.42, 0.28, fill=(226, 240, 248), outline=INK, width=1.5)
-    a.poly([(0.17, 0.26), (0.25, 0.22), (0.3, 0.32), (0.24, 0.4), (0.16, 0.36)], fill=GREEN, outline=None)
-    a.poly([(0.22, 0.48), (0.32, 0.46), (0.3, 0.6), (0.24, 0.62)], fill=GREEN, outline=None)
-    a.rrect(0.395, 0.12, 0.435, 0.6, r=4, fill=WHITE, outline=INK, width=1.2)
-    a.rrect(0.403, 0.3, 0.427, 0.6, r=3, fill=RED, outline=None)
-    a.circle(0.415, 0.64, 0.08, fill=RED, outline=INK, width=1.2)
-    # the draft text, "fossil fuels" struck out
-    a.poly([(0.54, 0.08), (0.94, 0.08), (0.94, 0.66), (0.54, 0.66)], fill=WHITE, outline=INK, width=1.3)
-    for k in range(4):
-        a.line([(0.58, 0.18 + k * 0.1), (0.9, 0.18 + k * 0.1)], GREY, 1.1)
-    a.rect(0.57, 0.33, 0.91, 0.45, fill=(255, 236, 236), outline=None)
-    a.text(0.74, 0.39, "FOSSIL FUELS", 9, CRIMSON)
-    a.line([(0.57, 0.39), (0.91, 0.39)], CRIMSON, 1.6)
-    a.tag("COP31  ·  ANTALYA", 0.03, 0.95, 10.5, WHITE, NAVY)
-    a.save()
+    a = Art("art_05.png", GRID, (244, 196, 116), GRID_BANNER)
+    a.rect(0, 0, 1, 0.74, fill=(246, 204, 128), outline=None)
+    a.rect(0, 0.74, 1, 1, fill=(44, 132, 150), outline=None)
+    a.circle(0.18, 0.44, 0.34, fill=(226, 240, 248), outline=INK, width=1.5)
+    a.poly([(0.1, 0.26), (0.19, 0.2), (0.25, 0.32), (0.18, 0.42), (0.09, 0.38)], fill=GREEN, outline=None)
+    a.poly([(0.16, 0.5), (0.27, 0.48), (0.24, 0.66), (0.18, 0.68)], fill=GREEN, outline=None)
+    a.rrect(0.37, 0.08, 0.41, 0.62, r=4, fill=WHITE, outline=INK, width=1.2)
+    a.rrect(0.378, 0.26, 0.402, 0.62, r=3, fill=RED, outline=None)
+    a.circle(0.39, 0.68, 0.1, fill=RED, outline=INK, width=1.2)
+    # the draft text with the fossil-fuel line struck out
+    a.poly([(0.5, 0.06), (0.9, 0.06), (0.9, 0.7), (0.5, 0.7)], fill=WHITE, outline=INK, width=1.3)
+    for k in range(5):
+        y = 0.16 + k * 0.12
+        a.line([(0.54, y), (0.86, y)], GREY if k != 2 else CRIMSON, 1.3 if k != 2 else 1.8)
+    a.rect(0.53, 0.37, 0.87, 0.47, fill=(255, 226, 226), outline=None)
+    a.line([(0.54, 0.42), (0.86, 0.42)], CRIMSON, 2)
+    a.line([(0.6, 0.33), (0.8, 0.51)], CRIMSON, 1.6)
+    a.line([(0.6, 0.51), (0.8, 0.33)], CRIMSON, 1.6)
+    a.finish("COP31: NO DEAL", C_GLOBAL, attr="Ongoing · UN")
 
 
-# ---- G3. Italy general strike ----------------------------------------------
+# ---- 6. Missile over Poland ------------------------------------------------
+def art_poland():
+    a = Art("art_06.png", GRID, (190, 206, 222), GRID_BANNER)
+    a.gradient((150, 172, 200), (226, 228, 222), 0, 0.68, 14)
+    # farmland strips
+    for k, col in enumerate(((120, 150, 80), (170, 150, 96), (104, 136, 70), (186, 168, 110))):
+        y0 = 0.68 + k * 0.08
+        a.poly([(0, y0), (1, y0 - 0.02), (1, y0 + 0.08), (0, y0 + 0.1)], fill=col, outline=None)
+    # tree line and border posts (red-white)
+    for i in range(14):
+        x = 0.02 + i * 0.075
+        a.circle(x, 0.66, 0.06, fill=(56, 92, 60), outline=None)
+    for x in (0.12, 0.2):
+        a.rect(x - 0.012, 0.5, x + 0.012, 0.8, fill=WHITE, outline=INK, width=0.8)
+        for k in range(3):
+            a.rect(x - 0.012, 0.52 + k * 0.1, x + 0.012, 0.57 + k * 0.1, fill=RED, outline=None)
+    # Polish flag
+    flagpole(a, 0.07, 0.08, 0.5)
+    a.rect(0.07, 0.08, 0.2, 0.18, fill=WHITE, outline=INK, width=1)
+    a.rect(0.07, 0.18, 0.2, 0.28, fill=(212, 33, 61), outline=INK, width=1)
+    # cruise missile heading west with trail
+    a.line([(0.98, 0.18), (0.82, 0.26), (0.64, 0.33)], (250, 250, 250), 3)
+    a.poly([(0.38, 0.38), (0.64, 0.3), (0.65, 0.36), (0.39, 0.44)], fill=(70, 76, 86), outline=INK, width=1)
+    a.poly([(0.34, 0.42), (0.38, 0.38), (0.39, 0.44)], fill=CRIMSON, outline=INK, width=1)
+    a.poly([(0.5, 0.36), (0.55, 0.24), (0.57, 0.34)], fill=(70, 76, 86), outline=INK, width=1)
+    a.poly([(0.6, 0.31), (0.66, 0.24), (0.66, 0.33)], fill=(70, 76, 86), outline=INK, width=1)
+    # radar dish
+    a.arc(0.86, 0.58, 0.12, 180, 360, INK, 2)
+    a.line([(0.86, 0.58), (0.86, 0.72)], INK, 2)
+    for r in (0.18, 0.26):
+        a.arc(0.86, 0.5, r, 210, 330, CRIMSON, 1.2)
+    a.finish("POLAND: MISSILE", C_EUROPE, attr="PM says · Guardian")
+
+
+# ---- 7. Iraqi army enters Jurf al-Sakher ----------------------------------
+def art_iraq():
+    a = Art("art_07.png", GRID, (230, 200, 150), GRID_BANNER)
+    a.gradient((236, 206, 150), (246, 226, 186), 0, 0.62, 12)
+    a.rect(0, 0.62, 1, 1, fill=(214, 180, 124), outline=None)
+    # palms
+    for x in (0.08, 0.2, 0.9):
+        a.line([(x, 0.64), (x + 0.01, 0.2)], (110, 80, 50), 2.6)
+        for ang in (-150, -120, -60, -30, -90):
+            t = math.radians(ang)
+            a.line([(x + 0.01, 0.2), (x + 0.01 + 0.07 * math.cos(t), 0.2 - 0.2 * math.sin(t) * -1 + 0.0)], (60, 120, 70), 2.4)
+    # compound wall and gate
+    a.rect(0.3, 0.28, 0.98, 0.64, fill=(196, 168, 120), outline=INK, width=1.2)
+    for k in range(9):
+        a.rect(0.3 + k * 0.077, 0.24, 0.335 + k * 0.077, 0.28, fill=(196, 168, 120), outline=INK, width=0.8)
+    a.rect(0.56, 0.38, 0.72, 0.64, fill=(70, 60, 50), outline=INK, width=1.2)
+    # Iraqi flag on the gate (stripes, green script mark)
+    flagpole(a, 0.64, 0.0, 0.26)
+    a.rect(0.64, 0.02, 0.78, 0.07, fill=(206, 17, 38), outline=None)
+    a.rect(0.64, 0.07, 0.78, 0.12, fill=WHITE, outline=None)
+    a.rect(0.64, 0.12, 0.78, 0.17, fill=INK, outline=None)
+    a.rect(0.64, 0.02, 0.78, 0.17, fill=None, outline=INK, width=0.8)
+    a.line([(0.685, 0.1), (0.7, 0.09), (0.715, 0.1), (0.735, 0.09)], (0, 122, 61), 1.2)  # stylised script
+    # armoured vehicle and troops moving in
+    a.rrect(0.12, 0.62, 0.48, 0.84, r=4, fill=(150, 140, 96), outline=INK, width=1.2)
+    a.rect(0.22, 0.52, 0.36, 0.62, fill=(130, 122, 84), outline=INK, width=1.1)
+    a.line([(0.36, 0.56), (0.52, 0.53)], INK, 2)
+    for x in (0.17, 0.25, 0.33, 0.41):
+        a.circle(x, 0.88, 0.06, fill=INK, outline=None)
+    for x in (0.54, 0.6, 0.66, 0.74):
+        person(a, x, 0.94, 0.3, fill=(84, 90, 60))
+    a.finish("IRAQ: ARMY IN", C_MIDEAST, attr="Officials")
+
+
+# ---- 8. Italy general strike -----------------------------------------------
 def art_italy():
-    a = Art("art_06.png", GRID, (238, 222, 196))
+    a = Art("art_08.png", GRID, (238, 222, 196), GRID_BANNER)
     a.rect(0, 0, 1, 1, fill=(244, 226, 196), outline=None)
-    a.rect(0, 0, 1, 0.06, fill=GREEN, outline=None)
-    a.rect(0, 0.06, 1, 0.1, fill=WHITE, outline=None)
-    a.rect(0, 0.1, 1, 0.14, fill=RED, outline=None)
-    # Colosseum arches
-    a.rect(0.52, 0.22, 0.98, 0.66, fill=(222, 192, 150), outline=INK, width=1.2)
+    a.rect(0.52, 0.06, 0.98, 0.66, fill=(222, 192, 150), outline=INK, width=1.2)
     for row in range(3):
         for k in range(7):
             x = 0.545 + k * 0.062
-            y = 0.27 + row * 0.13
-            a.rrect(x, y, x + 0.035, y + 0.1, r=6, fill=(150, 112, 80), outline=None)
-    # stopped bus with STRIKE sign
-    a.rrect(0.04, 0.4, 0.46, 0.7, r=4, fill=(230, 160, 40), outline=INK, width=1.3)
-    for k in range(4):
-        a.rect(0.07 + k * 0.09, 0.45, 0.13 + k * 0.09, 0.55, fill=(190, 220, 236), outline=None)
-    a.circle(0.12, 0.72, 0.06, fill=INK, outline=None)
-    a.circle(0.38, 0.72, 0.06, fill=INK, outline=None)
-    a.rect(0.12, 0.58, 0.38, 0.66, fill=CRIMSON, outline=None)
-    a.text(0.25, 0.62, "SCIOPERO", 9, WHITE)
-    # marchers with red flags
-    a.rect(0, 0.76, 1, 1, fill=(196, 176, 150), outline=None)
-    for i in range(11):
-        x = 0.05 + i * 0.09
-        person(a, x, 0.98, 0.2 + (i % 3) * 0.02, fill=(40, 40, 50))
-    for x in (0.52, 0.72, 0.9):
-        a.line([(x, 0.8), (x, 0.56)], INK, 1.2)
-        a.poly([(x, 0.56), (x + 0.08, 0.6), (x, 0.65)], fill=RED, outline=None)
-    a.tag("ITALY  ·  24H STRIKE", 0.03, 0.27, 10.5, WHITE, CRIMSON)
-    a.save()
-
-
-# ---- G4. Trump White House presser -----------------------------------------
-def art_trump():
-    a = Art("art_07.png", GRID, (40, 56, 92))
-    a.rect(0, 0, 1, 1, fill=(36, 54, 94), outline=None)
-    # blue curtain folds and a briefing-room oval panel
-    for k in range(10):
-        a.rect(k * 0.1, 0, k * 0.1 + 0.05, 1, fill=(44, 64, 108), outline=None)
-    a.d.ellipse(a.box(0.3, 0.04, 0.7, 0.36), fill=(226, 232, 242), outline=INK, width=a.lw(1.2))
-    a.d.ellipse(a.box(0.34, 0.08, 0.66, 0.32), fill=None, outline=(36, 54, 94), width=a.lw(1.2))
-    a.text(0.5, 0.2, "WHITE HOUSE", 9, NAVY)
-    # US flags either side (generic stripes)
-    for x0 in (0.04, 0.8):
-        a.line([(x0, 0.08), (x0, 0.98)], (200, 170, 90), 1.6)
-        for st in range(7):
-            col = RED if st % 2 == 0 else WHITE
-            a.rect(x0 + 0.01, 0.1 + st * 0.05, x0 + 0.16, 0.15 + st * 0.05, fill=col, outline=None)
-        a.rect(x0 + 0.01, 0.1, x0 + 0.075, 0.25, fill=(20, 40, 110), outline=None)
-    # flanking figures and speaker at a podium
-    person(a, 0.3, 0.86, 0.5, fill=(22, 26, 38))
-    person(a, 0.7, 0.86, 0.5, fill=(22, 26, 38))
-    person(a, 0.5, 0.8, 0.42, fill=(16, 18, 28))
-    a.poly([(0.4, 0.62), (0.6, 0.62), (0.57, 1), (0.43, 1)], fill=(120, 84, 52), outline=INK, width=1.2)
-    a.circle(0.5, 0.78, 0.07, fill=GOLD, outline=INK, width=1)
-    a.line([(0.47, 0.62), (0.45, 0.5)], INK, 1.2)
-    a.line([(0.53, 0.62), (0.55, 0.5)], INK, 1.2)
-    a.tag("PRESSER  ·  IRAN", 0.03, 0.95, 10.5, WHITE, CRIMSON)
-    a.save()
-
-
-# ---- G5. UN straw poll -----------------------------------------------------
-def art_un():
-    a = Art("art_08.png", GRID, (60, 120, 180))
-    a.rect(0, 0, 1, 1, fill=(64, 128, 188), outline=None)
-    # stylised globe with olive arcs (not the UN emblem itself)
-    a.circle(0.24, 0.42, 0.27, fill=(224, 238, 250), outline=WHITE, width=1.6)
-    a.arc(0.24, 0.42, 0.18, 0, 360, (64, 128, 188), 1.2)
-    a.arc(0.24, 0.42, 0.09, 0, 360, (64, 128, 188), 1.2)
-    a.line([(0.08, 0.42), (0.4, 0.42)], (64, 128, 188), 1.2)
-    a.line([(0.24, 0.16), (0.24, 0.68)], (64, 128, 188), 1.2)
-    a.arc(0.24, 0.42, 0.33, 110, 250, (250, 250, 250), 2)
-    a.arc(0.24, 0.42, 0.33, 290, 430, (250, 250, 250), 2)
-    # ballot box receiving red (P5) and white (E10) ballots
-    a.rect(0.52, 0.44, 0.92, 0.8, fill=(240, 240, 236), outline=INK, width=1.4)
-    a.rect(0.62, 0.42, 0.82, 0.47, fill=INK, outline=None)
-    for i, col in enumerate((RED, WHITE, RED, WHITE, WHITE)):
-        x = 0.56 + i * 0.075
-        y = 0.12 + (i % 2) * 0.1
-        a.rect(x, y, x + 0.06, y + 0.17, fill=col, outline=INK, width=1)
-    a.text(0.72, 0.62, "9TH POLL", 9, NAVY)
-    a.tag("UN  ·  NEXT CHIEF", 0.03, 0.95, 10.5, WHITE, NAVY)
-    a.save()
-
-
-# ---- G6. Saudi intercepts --------------------------------------------------
-def art_riyadh():
-    a = Art("art_09.png", GRID, (130, 170, 210))
-    for i in range(12):
-        t = i / 11
-        col = tuple(int(c0 + (c1 - c0) * t) for c0, c1 in zip((90, 130, 186), (238, 206, 160)))
-        a.rect(0, i * 0.06, 1, i * 0.06 + 0.061, fill=col, outline=None)
-    a.rect(0, 0.72, 1, 1, fill=(214, 176, 120), outline=None)
-    # skyline with a tall bottle-opener tower silhouette
-    for x0, x1, top in ((0.04, 0.12, 0.56), (0.13, 0.2, 0.48), (0.22, 0.28, 0.6),
-                        (0.62, 0.7, 0.52), (0.72, 0.8, 0.6), (0.82, 0.92, 0.5)):
-        a.rect(x0, top, x1, 0.74, fill=(70, 74, 86), outline=None)
-    a.poly([(0.38, 0.74), (0.43, 0.14), (0.49, 0.14), (0.54, 0.74)], fill=(58, 62, 76), outline=None)
-    a.poly([(0.425, 0.2), (0.495, 0.2), (0.48, 0.3), (0.44, 0.3)], fill=(150, 176, 210), outline=None)
-    # interceptor arcs and bursts
-    for sx, ex, ey in ((0.1, 0.3, 0.16), (0.9, 0.72, 0.14), (0.95, 0.86, 0.3)):
-        a.line([(sx, 0.72), ((sx + ex) / 2, ey + 0.18), (ex, ey)], (255, 250, 230), 1.6)
-        a.circle(ex, ey, 0.06, fill=GOLD, outline=ORANGE, width=1.4)
-    # drones (small deltas)
-    for x, y in ((0.62, 0.1), (0.7, 0.28), (0.18, 0.34)):
-        a.poly([(x - 0.03, y), (x + 0.03, y), (x, y + 0.06)], fill=INK, outline=None)
-    a.tag("RIYADH  ·  INTERCEPTS", 0.03, 0.95, 10.5, WHITE, CRIMSON)
-    a.save()
-
-
-# ---- G7. Florida floods ----------------------------------------------------
-def art_florida():
-    a = Art("art_10.png", GRID, (120, 140, 156))
-    a.rect(0, 0, 1, 0.6, fill=(122, 138, 152), outline=None)
-    for x, y, s in ((0.15, 0.12, 0.12), (0.45, 0.08, 0.16), (0.8, 0.14, 0.12)):
-        a.circle(x, y, s, fill=(92, 104, 118), outline=None)
-        a.circle(x + 0.08, y + 0.04, s * 0.9, fill=(92, 104, 118), outline=None)
-    raindrops(a, 0.14, 0.62, 30, (210, 226, 236), seed=7)
-    # floodwater with houses and a palm
-    a.rect(0, 0.6, 1, 1, fill=(92, 120, 110), outline=None)
-    for x, w, h in ((0.08, 0.2, 0.2), (0.38, 0.18, 0.18), (0.66, 0.22, 0.2)):
-        a.rect(x, 0.62 - h * 0.6, x + w, 0.74, fill=PAPER, outline=INK, width=1.2)
-        a.poly([(x - 0.02, 0.62 - h * 0.6), (x + w / 2, 0.62 - h * 1.3), (x + w + 0.02, 0.62 - h * 0.6)],
-               fill=(150, 70, 56), outline=INK, width=1.2)
-        a.rect(x + w * 0.4, 0.6, x + w * 0.6, 0.74, fill=INK, outline=None)
-    a.rect(0, 0.7, 1, 1, fill=(84, 112, 104), outline=None)
-    for k in range(5):
-        a.line([(0.04 + k * 0.2, 0.8), (0.14 + k * 0.2, 0.8)], (150, 180, 170), 1.2)
-    # airboat
-    a.poly([(0.56, 0.86), (0.84, 0.86), (0.8, 0.94), (0.6, 0.94)], fill=CRIMSON, outline=INK, width=1.2)
-    a.circle(0.87, 0.8, 0.07, fill=None, outline=INK, width=1.3)
-    person(a, 0.66, 0.86, 0.14, fill=(250, 200, 60))
-    a.tag("FLORIDA  ·  FLOODS", 0.03, 0.95, 10.5, WHITE, NAVY)
-    a.save()
-
-
-# ---- G8. China-Australia ---------------------------------------------------
-def art_china_aus():
-    a = Art("art_11.png", GRID, (172, 36, 40))
-    a.rect(0, 0, 1, 1, fill=(186, 50, 46), outline=None)
-    for i in range(14):
-        t = i * math.pi / 7
-        a.line([(0.5, 0.64), (0.5 + 0.7 * math.cos(t), 0.64 + 1.2 * math.sin(t))], (204, 72, 60), 3)
-    # PRC flag
-    a.rect(0.05, 0.1, 0.36, 0.46, fill=(222, 41, 16), outline=INK, width=1.2)
-    a.star(0.11, 0.2, 0.07, (255, 222, 0))
-    for dx, dy in ((0.17, 0.13), (0.195, 0.19), (0.195, 0.27), (0.17, 0.33)):
-        a.star(dx, dy, 0.025, (255, 222, 0))
-    # Australian flag
-    a.rect(0.64, 0.1, 0.95, 0.46, fill=(1, 33, 105), outline=INK, width=1.2)
-    union_jack(a, 0.64, 0.1, 0.795, 0.28)
-    a.star(0.715, 0.38, 0.05, WHITE, points=7)
-    for dx, dy in ((0.88, 0.15), (0.84, 0.26), (0.92, 0.3), (0.88, 0.4)):
-        a.star(dx, dy, 0.03, WHITE, points=7)
-    # handshake
-    a.rrect(0.26, 0.58, 0.48, 0.7, r=6, fill=(232, 196, 160), outline=INK, width=1.2)
-    a.rrect(0.52, 0.58, 0.74, 0.7, r=6, fill=(214, 172, 132), outline=INK, width=1.2)
-    a.circle(0.5, 0.64, 0.09, fill=GOLD, outline=INK, width=1.2)
-    a.tag("XI–ALBANESE", 0.03, 0.95, 10.5, WHITE, NAVY)
-    a.save()
-
-
-# ---- G9. Dakar migration ---------------------------------------------------
-def art_dakar():
-    a = Art("art_12.png", GRID, (60, 140, 170))
-    a.rect(0, 0, 1, 1, fill=(64, 146, 178), outline=None)
-    # West African bulge (land on the right)
-    a.poly([(0.42, 0), (1, 0), (1, 1), (0.6, 1), (0.52, 0.8), (0.46, 0.62), (0.36, 0.5),
-            (0.34, 0.4), (0.4, 0.26), (0.44, 0.12)], fill=(222, 196, 140), outline=INK, width=1.3)
-    a.poly([(0.6, 0.6), (1, 0.5), (1, 1), (0.6, 1)], fill=(150, 176, 104), outline=None)
-    # Dakar star on the Cap-Vert peninsula
-    a.star(0.355, 0.44, 0.09, CRIMSON)
-    # regional routes converging on Dakar
-    for (sx, sy) in ((0.92, 0.18), (0.94, 0.62), (0.76, 0.86), (0.7, 0.3)):
-        a.line([(sx, sy), ((sx + 0.36) / 2, (sy + 0.44) / 2 - 0.06), (0.38, 0.44)], (120, 40, 30), 1.6)
-        a.circle(sx, sy, 0.04, fill=NAVY, outline=WHITE, width=1)
-    # pirogue on the Atlantic
-    a.poly([(0.04, 0.72), (0.28, 0.72), (0.24, 0.82), (0.08, 0.82)], fill=(236, 112, 40), outline=INK, width=1.2)
-    a.rect(0.04, 0.7, 0.28, 0.73, fill=GOLD, outline=None)
+            y = 0.12 + row * 0.18
+            a.rrect(x, y, x + 0.035, y + 0.13, r=6, fill=(150, 112, 80), outline=None)
+    # Italian flag
+    flagpole(a, 0.04, 0.04, 0.4)
+    for k, col in enumerate(((0, 146, 70), WHITE, (206, 43, 55))):
+        a.rect(0.04 + k * 0.045, 0.05, 0.085 + k * 0.045, 0.24, fill=col, outline=None)
+    a.rect(0.04, 0.05, 0.175, 0.24, fill=None, outline=INK, width=0.8)
+    # stopped bus
+    a.rrect(0.2, 0.3, 0.5, 0.66, r=4, fill=(230, 160, 40), outline=INK, width=1.3)
     for k in range(3):
-        a.line([(0.04 + k * 0.08, 0.9), (0.1 + k * 0.08, 0.9)], (170, 214, 230), 1.2)
-    a.tag("DAKAR  ·  ROADMAP", 0.03, 0.27, 10.5, WHITE, (46, 125, 80))
-    a.save()
+        a.rect(0.225 + k * 0.09, 0.36, 0.285 + k * 0.09, 0.48, fill=(190, 220, 236), outline=None)
+    a.circle(0.27, 0.68, 0.07, fill=INK, outline=None)
+    a.circle(0.44, 0.68, 0.07, fill=INK, outline=None)
+    a.rect(0.24, 0.53, 0.46, 0.61, fill=CRIMSON, outline=None)
+    # marchers with red flags
+    a.rect(0, 0.74, 1, 1, fill=(196, 176, 150), outline=None)
+    for i in range(11):
+        person(a, 0.05 + i * 0.09, 0.99, 0.24 + (i % 3) * 0.03, fill=(40, 40, 50))
+    for x in (0.1, 0.36, 0.62):
+        a.line([(x, 0.8), (x, 0.5)], INK, 1.2)
+        a.poly([(x, 0.5), (x + 0.08, 0.55), (x, 0.6)], fill=RED, outline=None)
+    a.finish("ITALY: STRIKE", C_EUROPE, attr="CGIL · AP")
 
 
-# ---- G10. BepiColombo ------------------------------------------------------
-def art_bepi():
-    a = Art("art_13.png", GRID, (10, 14, 28))
-    a.rect(0, 0, 1, 1, fill=(12, 16, 30), outline=None)
-    for i in range(40):
-        fx = (i * 0.6180339) % 1.0
-        fy = (i * 0.381966 + 0.11) % 1.0
-        a.circle(fx, fy, 0.008 + (i % 3) * 0.004, fill=(220, 224, 236), outline=None)
-    # the Sun's glare at the left edge
-    a.circle(-0.08, 0.5, 0.5, fill=(250, 196, 80), outline=None)
-    a.circle(-0.08, 0.5, 0.38, fill=(255, 232, 150), outline=None)
-    # Mercury with craters
-    a.circle(0.62, 0.52, 0.34, fill=(150, 146, 140), outline=(210, 206, 198), width=1.4)
-    for x, y, r in ((0.56, 0.4, 0.06), (0.68, 0.62, 0.08), (0.6, 0.66, 0.035), (0.7, 0.36, 0.04)):
-        a.circle(x, y, r, fill=(118, 114, 110), outline=None)
-    # dashed capture orbit
-    for k in range(0, 360, 20):
-        a.d.arc(a.box(0.38, 0.12, 0.86, 0.92), k, k + 11, fill=(120, 200, 230), width=a.lw(1.4))
-    # spacecraft: body, solar wing
-    a.rect(0.84, 0.16, 0.9, 0.3, fill=(230, 200, 120), outline=INK, width=1)
-    a.rect(0.9, 0.2, 0.99, 0.26, fill=(60, 90, 170), outline=(200, 210, 230), width=0.8)
-    a.rect(0.75, 0.2, 0.84, 0.26, fill=(60, 90, 170), outline=(200, 210, 230), width=0.8)
-    a.tag("MERCURY  ·  SAT 21 NOV", 0.03, 0.95, 10.5, WHITE, (74, 85, 99))
-    a.save()
+# ---- 9. Japan CPI ----------------------------------------------------------
+def art_japan():
+    a = Art("art_09.png", GRID, (246, 238, 226), GRID_BANNER)
+    a.rect(0, 0, 1, 1, fill=(246, 238, 226), outline=None)
+    for k in range(1, 5):
+        a.line([(0.46, k * 0.2), (0.98, k * 0.2)], (220, 208, 190), 1)
+    # rising sun disc
+    a.circle(0.2, 0.36, 0.26, fill=(188, 0, 45), outline=None)
+    # shopping basket with produce
+    a.circle(0.12, 0.64, 0.09, fill=(232, 80, 50), outline=INK, width=1)
+    a.circle(0.22, 0.62, 0.1, fill=(120, 170, 60), outline=INK, width=1)
+    a.rrect(0.16, 0.5, 0.2, 0.62, r=2, fill=(250, 250, 244), outline=INK, width=1)
+    a.circle(0.3, 0.64, 0.08, fill=(240, 190, 60), outline=INK, width=1)
+    a.poly([(0.04, 0.68), (0.38, 0.68), (0.34, 0.96), (0.08, 0.96)], fill=(176, 120, 64), outline=INK, width=1.3)
+    for k in range(4):
+        a.line([(0.1 + k * 0.075, 0.7), (0.12 + k * 0.065, 0.94)], (130, 84, 44), 1.1)
+    # rising CPI bars and arrow
+    vals = (0.3, 0.38, 0.34, 0.46, 0.54, 0.62, 0.72)
+    for i, v in enumerate(vals):
+        x = 0.48 + i * 0.07
+        col = CRIMSON if i == len(vals) - 1 else (90, 100, 116)
+        a.rect(x, 0.96 - v, x + 0.05, 0.96, fill=col, outline=None)
+    a.line([(0.5, 0.56), (0.66, 0.46), (0.78, 0.4), (0.92, 0.14)], INK, 2.2)
+    a.poly([(0.95, 0.06), (0.88, 0.14), (0.95, 0.2)], fill=INK, outline=None)
+    a.line([(0.44, 0.96), (0.99, 0.96)], INK, 1.4)
+    a.finish("JAPAN: +2.3%", C_ASIA, attr="MIC · JT")
 
 
-ART_FUNCS = [art_kyiv, art_akvan, art_chips, art_euuk, art_cop31, art_italy, art_trump,
-             art_un, art_riyadh, art_florida, art_china_aus, art_dakar, art_bepi]
+# ---- 10. Seoul: move to impeach the chief justice -------------------------
+def art_seoul():
+    a = Art("art_10.png", GRID, (204, 220, 236), GRID_BANNER)
+    a.gradient((176, 200, 228), (232, 238, 244), 0, 0.8, 12)
+    a.rect(0, 0.8, 1, 1, fill=(186, 184, 176), outline=None)
+    # court building: pediment, columns, steps
+    a.poly([(0.08, 0.26), (0.38, 0.04), (0.68, 0.26)], fill=(236, 232, 222), outline=INK, width=1.2)
+    a.rect(0.1, 0.26, 0.66, 0.32, fill=(226, 222, 210), outline=INK, width=1)
+    for k in range(6):
+        x = 0.14 + k * 0.095
+        a.rect(x, 0.32, x + 0.04, 0.72, fill=(244, 240, 232), outline=INK, width=0.8)
+    a.rect(0.08, 0.72, 0.68, 0.78, fill=(214, 208, 196), outline=INK, width=1)
+    a.rect(0.04, 0.78, 0.72, 0.84, fill=(200, 194, 182), outline=INK, width=1)
+    # scales of justice on pediment
+    a.circle(0.38, 0.18, 0.04, fill=GOLD, outline=INK, width=0.8)
+    # impeachment motion paper with red seal
+    a.poly([(0.74, 0.12), (0.96, 0.08), (0.99, 0.7), (0.77, 0.74)], fill=WHITE, outline=INK, width=1.2)
+    for k in range(5):
+        y = 0.2 + k * 0.08
+        a.line([(0.78, y), (0.95, y - 0.02)], GREY, 1.1)
+    a.circle(0.88, 0.6, 0.1, fill=None, outline=CRIMSON, width=2.2)
+    a.circle(0.88, 0.6, 0.05, fill=CRIMSON, outline=None)
+    # gavel
+    a.line([(0.6, 0.98), (0.76, 0.82)], (110, 70, 40), 3)
+    a.rrect(0.72, 0.74, 0.84, 0.88, r=3, fill=(130, 84, 48), outline=INK, width=1)
+    a.finish("SEOUL: IMPEACH", C_ASIA, attr="DPK · Herald")
+
+
+# ---- 11. Kenya's first oil well -------------------------------------------
+def art_kenya():
+    a = Art("art_11.png", GRID, (240, 170, 90), GRID_BANNER)
+    a.gradient((236, 140, 70), (250, 214, 140), 0, 0.72, 12)
+    a.circle(0.8, 0.5, 0.2, fill=(255, 236, 170), outline=None)
+    a.rect(0, 0.72, 1, 1, fill=(176, 130, 76), outline=None)
+    # acacia
+    a.line([(0.14, 0.86), (0.16, 0.5)], (60, 40, 30), 2.4)
+    a.poly([(0.02, 0.5), (0.1, 0.36), (0.24, 0.34), (0.32, 0.48)], fill=(50, 60, 34), outline=None)
+    # drilling derrick (lattice)
+    base_l, base_r, top = 0.44, 0.66, 0.02
+    a.line([(base_l, 0.84), (0.535, top)], INK, 2)
+    a.line([(base_r, 0.84), (0.565, top)], INK, 2)
+    for k in range(7):
+        y = 0.84 - k * 0.12
+        t = (0.84 - y) / (0.84 - top)
+        xl = base_l + (0.535 - base_l) * t
+        xr = base_r + (0.565 - base_r) * t
+        y2 = y - 0.12
+        t2 = (0.84 - y2) / (0.84 - top)
+        xl2 = base_l + (0.535 - base_l) * t2
+        xr2 = base_r + (0.565 - base_r) * t2
+        a.line([(xl, y), (xr, y)], INK, 1)
+        if y2 > top:
+            a.line([(xl, y), (xr2, y2)], INK, 0.9)
+            a.line([(xr, y), (xl2, y2)], INK, 0.9)
+    a.rect(0.38, 0.8, 0.74, 0.88, fill=(70, 70, 76), outline=INK, width=1)
+    # tanks and pipe
+    a.rrect(0.78, 0.68, 0.96, 0.9, r=3, fill=(220, 220, 214), outline=INK, width=1)
+    a.line([(0.74, 0.84), (0.78, 0.84)], INK, 2)
+    # Kenyan flag
+    flagpole(a, 0.28, 0.1, 0.86)
+    for k, col in enumerate((INK, WHITE, (187, 0, 0), WHITE, (0, 102, 0))):
+        h = (0.07, 0.015, 0.07, 0.015, 0.07)[k]
+        y0 = 0.1 + sum((0.07, 0.015, 0.07, 0.015, 0.07)[:k])
+        a.rect(0.28, y0, 0.4, y0 + h, fill=col, outline=None)
+    a.rect(0.28, 0.1, 0.4, 0.34, fill=None, outline=INK, width=0.8)
+    a.finish("KENYA: OIL", C_AFRICA, attr="Spudded · Star")
+
+
+# ---- 12. Bukele third-term bid --------------------------------------------
+def art_bukele():
+    a = Art("art_12.png", GRID, (190, 220, 240), GRID_BANNER)
+    a.gradient((150, 196, 232), (226, 238, 246), 0, 0.7, 12)
+    # San Salvador volcano silhouette
+    a.poly([(0.3, 0.72), (0.56, 0.2), (0.64, 0.18), (0.94, 0.72)], fill=(96, 118, 110), outline=None)
+    a.poly([(0.52, 0.28), (0.56, 0.2), (0.64, 0.18), (0.68, 0.28), (0.6, 0.26)], fill=(130, 150, 140), outline=None)
+    a.rect(0, 0.72, 1, 1, fill=(120, 150, 96), outline=None)
+    # Salvadoran flag (blue-white-blue)
+    flagpole(a, 0.06, 0.06, 0.94)
+    for k, col in enumerate(((0, 71, 171), WHITE, (0, 71, 171))):
+        a.rect(0.06, 0.06 + k * 0.08, 0.26, 0.14 + k * 0.08, fill=col, outline=None)
+    a.rect(0.06, 0.06, 0.26, 0.3, fill=None, outline=INK, width=0.8)
+    a.poly([(0.145, 0.205), (0.16, 0.155), (0.175, 0.205)], fill=(0, 122, 61), outline=GOLD, width=0.6)  # emblem
+    # ballot box with ballot going in
+    a.rect(0.34, 0.5, 0.66, 0.94, fill=WHITE, outline=INK, width=1.4)
+    a.rect(0.34, 0.5, 0.66, 0.58, fill=(0, 71, 171), outline=INK, width=1)
+    a.rect(0.44, 0.52, 0.56, 0.555, fill=INK, outline=None)
+    a.poly([(0.45, 0.2), (0.57, 0.18), (0.56, 0.54), (0.46, 0.54)], fill=PAPER, outline=INK, width=1.1)
+    a.line([(0.48, 0.3), (0.52, 0.36), (0.55, 0.26)], CRIMSON, 1.8)
+    # filing folder / tribunal stamp
+    a.rrect(0.72, 0.56, 0.96, 0.9, r=3, fill=(236, 214, 150), outline=INK, width=1.1)
+    a.line([(0.75, 0.66), (0.93, 0.66)], GREY, 1)
+    a.line([(0.75, 0.74), (0.93, 0.74)], GREY, 1)
+    a.finish("BUKELE: 3RD BID", C_AMERICAS, attr="Filed · AP")
+
+
+# ---- 13. Phillips century v India -----------------------------------------
+def art_phillips():
+    a = Art("art_13.png", GRID, (70, 140, 80), GRID_BANNER)
+    a.gradient((150, 196, 230), (210, 230, 240), 0, 0.36, 8)
+    # stand
+    a.rect(0, 0.26, 1, 0.42, fill=(70, 80, 96), outline=None)
+    for k in range(20):
+        a.circle(0.025 + k * 0.05, 0.31, 0.03, fill=(200, 200, 210) if k % 2 else (150, 160, 176), outline=None)
+    # outfield stripes
+    for k in range(6):
+        col = (70, 150, 80) if k % 2 else (84, 164, 92)
+        a.rect(0, 0.42 + k * 0.1, 1, 0.52 + k * 0.1, fill=col, outline=None)
+    # pitch
+    a.poly([(0.36, 0.5), (0.5, 0.5), (0.62, 1), (0.3, 1)], fill=(216, 196, 140), outline=None)
+    for x in (0.4, 0.43, 0.46):
+        a.rect(x, 0.42, x + 0.012, 0.56, fill=WHITE, outline=INK, width=0.6)
+    # batter in black, bat raised to celebrate the hundred
+    bx = 0.62
+    a.circle(bx, 0.42, 0.06, fill=(20, 20, 24), outline=None)
+    a.rrect(bx - 0.035, 0.48, bx + 0.035, 0.76, r=3, fill=(20, 20, 24), outline=None)
+    a.line([(bx - 0.02, 0.76), (bx - 0.04, 0.96)], (20, 20, 24), 3)
+    a.line([(bx + 0.02, 0.76), (bx + 0.04, 0.96)], (20, 20, 24), 3)
+    a.line([(bx + 0.03, 0.52), (bx + 0.09, 0.32)], (20, 20, 24), 2.4)
+    a.line([(bx + 0.09, 0.32), (bx + 0.13, 0.02)], (226, 200, 150), 3.4)
+    a.line([(bx - 0.03, 0.52), (bx - 0.08, 0.36)], (20, 20, 24), 2.4)
+    a.circle(bx - 0.08, 0.34, 0.03, fill=(232, 196, 160), outline=None)
+    # scoreboard
+    a.rect(0.78, 0.04, 0.98, 0.24, fill=INK, outline=(230, 230, 230), width=1)
+    for k in range(3):
+        a.rect(0.8 + k * 0.06, 0.08, 0.84 + k * 0.06, 0.2, fill=(250, 214, 80), outline=None)
+    a.circle(0.24, 0.72, 0.03, fill=(220, 30, 40), outline=WHITE, width=0.6)
+    a.finish("PHILLIPS: 118", C_OCEANIA, attr="Scorecard · ICC")
+
+
+ART_FUNCS = [art_kyiv, art_akvan, art_chips, art_euuk, art_cop31, art_poland, art_iraq,
+             art_italy, art_japan, art_seoul, art_kenya, art_bukele, art_phillips]
 
 
 def build_all():
@@ -586,14 +652,27 @@ def build_all():
     for fn in ART_FUNCS:
         fn()
     bad = []
-    for name, s, (x0, y0, x1, y1), (W, H), half_cap in LABELS:
-        pad = min(x0, y0, W - x1, H - y1)
-        printed_cap = half_cap  # cap height in printed px (2x canvas / 2)
-        if pad < 4 or printed_cap < 6:
-            bad.append((name, s, round(pad, 1), printed_cap))
+    by_art: dict[str, list[dict]] = {}
+    for lb in LABELS:
+        x0, y0, x1, y1 = lb["bbox"]
+        ex0, ey0, ex1, ey1 = lb["edge"]
+        pad = min(x0 - ex0, y0 - ey0, ex1 - x1, ey1 - y1)
+        if pad < 3:
+            bad.append((lb["art"], lb["text"], "padding", round(pad, 1)))
+        by_art.setdefault(lb["art"], []).append(lb)
+    for name, labels in by_art.items():
+        for i, p in enumerate(labels):
+            for q in labels[i + 1:]:
+                a, b = p["bbox"], q["bbox"]
+                if a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]:
+                    bad.append((name, p["text"], "overlaps", q["text"]))
+        banner = [lb for lb in labels if lb["kind"] == "banner"]
+        want = 22 if labels[0]["img"][0] > 200 else 15
+        if len(banner) != 1 or banner[0]["size"] < want:
+            bad.append((name, "banner size", [b["size"] for b in banner]))
     if bad:
         raise SystemExit(f"art label failure: {bad}")
-    print(f"art: {len(ART_FUNCS)} illustrations, {len(LABELS)} badges, padding ok")
+    print(f"art: {len(ART_FUNCS)} illustrations, {len(LABELS)} labels, padding and overlap ok")
 
 
 if __name__ == "__main__":
