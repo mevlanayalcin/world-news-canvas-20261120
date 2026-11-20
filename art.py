@@ -1,9 +1,9 @@
-"""Editorial illustrations for the Friday 20 November 2026 front page (v2).
+"""Editorial illustrations for the Friday 20 November 2026 front page (v3).
 
 Every picture is drawn from scratch with Pillow at twice its printed size and
 reduced with Lanczos, so edges are supersampled. Coordinates are written as
 fractions of the 2x canvas (X(0.5) is the horizontal middle), which keeps each
-drawing correct at the hero size (310x142) and the grid size (180x88).
+drawing correct at the hero size (310x120) and the grid size (180x72).
 """
 from __future__ import annotations
 
@@ -41,8 +41,8 @@ LATO_BLACK = FONT_DIR / "lato" / "Lato-Black.ttf"
 LATO_BOLD = FONT_DIR / "lato" / "Lato-Bold.ttf"
 SERIF_BOLD = FONT_DIR / "liberation" / "LiberationSerif-Bold.ttf"
 
-HERO = (310, 142)
-GRID = (180, 88)
+HERO = (310, 120)
+GRID = (180, 72)
 
 LABELS: list[tuple[str, str, tuple[float, float, float, float], tuple[int, int], int]] = []
 
@@ -274,41 +274,73 @@ def art_akvan():
     a.save()
 
 
-# ---- H3. UK-EU summit ------------------------------------------------------
-def art_euuk():
-    a = Art("art_03.png", HERO, (226, 232, 238))
-    a.rect(0, 0, 1, 1, fill=(214, 228, 240), outline=None)
-    # glass summit building (Europa-style lantern, drawn generically)
-    a.rect(0.3, 0.1, 0.7, 0.62, fill=(178, 200, 220), outline=INK, width=1.4)
-    for i in range(9):
-        a.line([(0.3 + i * 0.05, 0.1), (0.3 + i * 0.05, 0.62)], (140, 166, 190), 1)
-    for j in range(5):
-        a.line([(0.3, 0.1 + j * 0.105), (0.7, 0.1 + j * 0.105)], (140, 166, 190), 1)
-    a.circle(0.5, 0.36, 0.16, fill=(236, 170, 70), outline=INK, width=1.4)
-    a.circle(0.5, 0.36, 0.09, fill=(250, 214, 140), outline=None)
-    # flags on poles
-    a.line([(0.08, 0.1), (0.08, 0.86)], INK, 2)
-    eu_flag(a, 0.085, 0.1, 0.27, 0.38)
-    a.line([(0.92, 0.1), (0.92, 0.86)], INK, 2)
-    union_jack(a, 0.735, 0.1, 0.915, 0.38)
-    # summit table
-    a.rect(0, 0.74, 1, 1, fill=(196, 182, 156), outline=None)
-    a.rrect(0.2, 0.66, 0.8, 0.76, r=6, fill=NAVY, outline=INK, width=1.4)
-    # two leaders shaking hands across the table
-    person(a, 0.39, 0.7, 0.36, fill=(36, 44, 60))
-    person(a, 0.61, 0.7, 0.36, fill=(36, 44, 60))
-    a.line([(0.415, 0.52), (0.5, 0.56), (0.585, 0.52)], (36, 44, 60), 4)
-    a.circle(0.5, 0.56, 0.035, fill=(232, 196, 160), outline=INK, width=1)
-    # the three deals on the table
-    a.tag("FOOD · CARBON · YOUTH", 0.56, 0.95, 10, WHITE, CRIMSON)
-    a.tag("UK–EU  ·  BRUSSELS", 0.025, 0.95, 13, WHITE, NAVY)
-    a.tag("100,000 / YR", 0.975, 0.5, 10, INK, GOLD, anchor="tr")
+# ---- H3. Asia chip-stock rout ---------------------------------------------
+def art_chips():
+    a = Art("art_03.png", HERO, (16, 22, 34))
+    a.rect(0, 0, 1, 1, fill=(18, 24, 38), outline=None)
+    # faint price grid
+    for k in range(1, 6):
+        a.line([(0, k * 0.16), (1, k * 0.16)], (40, 50, 70), 1)
+    for k in range(1, 10):
+        a.line([(k * 0.1, 0), (k * 0.1, 1)], (32, 40, 58), 1)
+    # silicon wafer with dies (left)
+    cx, cy, r = 0.2, 0.52, 0.36
+    a.circle(cx, cy, r, fill=(150, 164, 186), outline=(220, 228, 240), width=1.6)
+    a.circle(cx, cy, r * 0.93, fill=(96, 112, 150), outline=None)
+    rx = r * a.H / a.W
+    for i in range(-4, 5):
+        for j in range(-4, 5):
+            x0, y0 = cx + i * rx * 0.2, cy + j * r * 0.2
+            if math.hypot((x0 - cx) / rx, (y0 - cy) / r) < 0.82:
+                col = (196, 160, 70) if (i + j) % 3 else (226, 196, 110)
+                a.rect(x0 - rx * 0.085, y0 - r * 0.085, x0 + rx * 0.085, y0 + r * 0.085, fill=col, outline=None)
+    a.poly([(cx - rx * 0.12, cy + r * 0.98), (cx + rx * 0.12, cy + r * 0.98), (cx, cy + r * 0.88)],
+           fill=(18, 24, 38), outline=None)
+    # crack across the wafer
+    a.line([(0.1, 0.24), (0.16, 0.42), (0.13, 0.52), (0.22, 0.66), (0.19, 0.8)], (18, 24, 38), 2.6)
+    a.line([(0.1, 0.24), (0.16, 0.42), (0.13, 0.52), (0.22, 0.66), (0.19, 0.8)], (240, 90, 80), 1)
+    # falling candlesticks (right)
+    candles = [(0.44, 0.18, 0.30, 0.12, 0.36, False), (0.5, 0.22, 0.38, 0.16, 0.44, True),
+               (0.56, 0.34, 0.42, 0.28, 0.48, True), (0.62, 0.38, 0.52, 0.32, 0.58, True),
+               (0.68, 0.46, 0.5, 0.42, 0.56, False), (0.74, 0.5, 0.64, 0.44, 0.7, True),
+               (0.8, 0.6, 0.72, 0.54, 0.78, True), (0.86, 0.66, 0.84, 0.6, 0.9, True)]
+    for x, o, c, hi, lo, down in candles:
+        o, c, hi, lo = (0.2 + v * 0.62 for v in (o, c, hi, lo))
+        col = (226, 56, 56) if down else (60, 190, 120)
+        a.line([(x, hi), (x, lo)], col, 1.4)
+        a.rect(x - 0.018, min(o, c), x + 0.018, max(o, c), fill=col, outline=None)
+    a.tag("TAIEX −6.23%", 0.975, 0.05, 11, WHITE, (200, 34, 40), anchor="tr")
+    a.tag("KOSPI −5.2%  ·  NIKKEI −5.1%", 0.555, 0.95, 9, INK, GOLD)
+    a.tag("ASIA  ·  AI & CHIP ROUT", 0.025, 0.95, 13, WHITE, CRIMSON)
     a.save()
 
 
-# ---- G1. COP31 -------------------------------------------------------------
+# ---- G1. UK-EU summit ------------------------------------------------------
+def art_euuk():
+    a = Art("art_04.png", GRID, (214, 228, 240))
+    a.rect(0, 0, 1, 1, fill=(214, 228, 240), outline=None)
+    a.rect(0.32, 0.08, 0.68, 0.7, fill=(178, 200, 220), outline=INK, width=1.4)
+    for i in range(7):
+        a.line([(0.32 + i * 0.06, 0.08), (0.32 + i * 0.06, 0.7)], (140, 166, 190), 1)
+    a.circle(0.5, 0.36, 0.2, fill=(236, 170, 70), outline=INK, width=1.4)
+    a.circle(0.5, 0.36, 0.11, fill=(250, 214, 140), outline=None)
+    a.line([(0.06, 0.06), (0.06, 0.92)], INK, 2)
+    eu_flag(a, 0.065, 0.06, 0.28, 0.4)
+    a.line([(0.94, 0.06), (0.94, 0.92)], INK, 2)
+    union_jack(a, 0.725, 0.06, 0.935, 0.4)
+    a.rect(0, 0.78, 1, 1, fill=(196, 182, 156), outline=None)
+    a.rrect(0.22, 0.7, 0.78, 0.8, r=5, fill=NAVY, outline=INK, width=1.2)
+    person(a, 0.4, 0.74, 0.4, fill=(36, 44, 60))
+    person(a, 0.6, 0.74, 0.4, fill=(36, 44, 60))
+    a.line([(0.42, 0.55), (0.5, 0.59), (0.58, 0.55)], (36, 44, 60), 4)
+    a.circle(0.5, 0.59, 0.045, fill=(232, 196, 160), outline=INK, width=1)
+    a.tag("UK–EU  ·  3 DEALS", 0.03, 0.95, 10, WHITE, NAVY)
+    a.tag("100K / YR", 0.97, 0.47, 9, INK, GOLD, anchor="tr")
+    a.save()
+
+# ---- G2. COP31 -------------------------------------------------------------
 def art_cop31():
-    a = Art("art_04.png", GRID, (244, 196, 116))
+    a = Art("art_05.png", GRID, (244, 196, 116))
     a.rect(0, 0, 1, 0.72, fill=(246, 204, 128), outline=None)
     a.rect(0, 0.72, 1, 1, fill=(44, 132, 150), outline=None)
     # globe with thermometer
@@ -329,32 +361,7 @@ def art_cop31():
     a.save()
 
 
-# ---- G2. Saudi intercepts --------------------------------------------------
-def art_riyadh():
-    a = Art("art_05.png", GRID, (130, 170, 210))
-    for i in range(12):
-        t = i / 11
-        col = tuple(int(c0 + (c1 - c0) * t) for c0, c1 in zip((90, 130, 186), (238, 206, 160)))
-        a.rect(0, i * 0.06, 1, i * 0.06 + 0.061, fill=col, outline=None)
-    a.rect(0, 0.72, 1, 1, fill=(214, 176, 120), outline=None)
-    # skyline with a tall bottle-opener tower silhouette
-    for x0, x1, top in ((0.04, 0.12, 0.56), (0.13, 0.2, 0.48), (0.22, 0.28, 0.6),
-                        (0.62, 0.7, 0.52), (0.72, 0.8, 0.6), (0.82, 0.92, 0.5)):
-        a.rect(x0, top, x1, 0.74, fill=(70, 74, 86), outline=None)
-    a.poly([(0.38, 0.74), (0.43, 0.14), (0.49, 0.14), (0.54, 0.74)], fill=(58, 62, 76), outline=None)
-    a.poly([(0.425, 0.2), (0.495, 0.2), (0.48, 0.3), (0.44, 0.3)], fill=(150, 176, 210), outline=None)
-    # interceptor arcs and bursts
-    for sx, ex, ey in ((0.1, 0.3, 0.16), (0.9, 0.72, 0.14), (0.95, 0.86, 0.3)):
-        a.line([(sx, 0.72), ((sx + ex) / 2, ey + 0.18), (ex, ey)], (255, 250, 230), 1.6)
-        a.circle(ex, ey, 0.06, fill=GOLD, outline=ORANGE, width=1.4)
-    # drones (small deltas)
-    for x, y in ((0.62, 0.1), (0.7, 0.28), (0.18, 0.34)):
-        a.poly([(x - 0.03, y), (x + 0.03, y), (x, y + 0.06)], fill=INK, outline=None)
-    a.tag("RIYADH  ·  INTERCEPTS", 0.03, 0.95, 10, WHITE, CRIMSON)
-    a.save()
-
-
-# ---- G3. Italy general strike ---------------------------------------------
+# ---- G3. Italy general strike ----------------------------------------------
 def art_italy():
     a = Art("art_06.png", GRID, (238, 222, 196))
     a.rect(0, 0, 1, 1, fill=(244, 226, 196), outline=None)
@@ -388,35 +395,87 @@ def art_italy():
     a.save()
 
 
-# ---- G4. China-Australia ---------------------------------------------------
-def art_china_aus():
-    a = Art("art_07.png", GRID, (172, 36, 40))
-    a.rect(0, 0, 1, 1, fill=(186, 50, 46), outline=None)
-    for i in range(14):
-        t = i * math.pi / 7
-        a.line([(0.5, 0.64), (0.5 + 0.7 * math.cos(t), 0.64 + 1.2 * math.sin(t))], (204, 72, 60), 3)
-    # PRC flag
-    a.rect(0.05, 0.1, 0.36, 0.46, fill=(222, 41, 16), outline=INK, width=1.2)
-    a.star(0.11, 0.2, 0.07, (255, 222, 0))
-    for dx, dy in ((0.17, 0.13), (0.195, 0.19), (0.195, 0.27), (0.17, 0.33)):
-        a.star(dx, dy, 0.025, (255, 222, 0))
-    # Australian flag
-    a.rect(0.64, 0.1, 0.95, 0.46, fill=(1, 33, 105), outline=INK, width=1.2)
-    union_jack(a, 0.64, 0.1, 0.795, 0.28)
-    a.star(0.715, 0.38, 0.05, WHITE, points=7)
-    for dx, dy in ((0.88, 0.15), (0.84, 0.26), (0.92, 0.3), (0.88, 0.4)):
-        a.star(dx, dy, 0.03, WHITE, points=7)
-    # handshake
-    a.rrect(0.26, 0.58, 0.48, 0.7, r=6, fill=(232, 196, 160), outline=INK, width=1.2)
-    a.rrect(0.52, 0.58, 0.74, 0.7, r=6, fill=(214, 172, 132), outline=INK, width=1.2)
-    a.circle(0.5, 0.64, 0.09, fill=GOLD, outline=INK, width=1.2)
-    a.tag("XI–ALBANESE", 0.03, 0.95, 10, WHITE, NAVY)
+# ---- G4. Trump White House presser -----------------------------------------
+def art_trump():
+    a = Art("art_07.png", GRID, (40, 56, 92))
+    a.rect(0, 0, 1, 1, fill=(36, 54, 94), outline=None)
+    # blue curtain folds and a briefing-room oval panel
+    for k in range(10):
+        a.rect(k * 0.1, 0, k * 0.1 + 0.05, 1, fill=(44, 64, 108), outline=None)
+    a.d.ellipse(a.box(0.3, 0.04, 0.7, 0.36), fill=(226, 232, 242), outline=INK, width=a.lw(1.2))
+    a.d.ellipse(a.box(0.34, 0.08, 0.66, 0.32), fill=None, outline=(36, 54, 94), width=a.lw(1.2))
+    a.text(0.5, 0.2, "WHITE HOUSE", 8, NAVY)
+    # US flags either side (generic stripes)
+    for x0 in (0.04, 0.8):
+        a.line([(x0, 0.08), (x0, 0.98)], (200, 170, 90), 1.6)
+        for st in range(7):
+            col = RED if st % 2 == 0 else WHITE
+            a.rect(x0 + 0.01, 0.1 + st * 0.05, x0 + 0.16, 0.15 + st * 0.05, fill=col, outline=None)
+        a.rect(x0 + 0.01, 0.1, x0 + 0.075, 0.25, fill=(20, 40, 110), outline=None)
+    # flanking figures and speaker at a podium
+    person(a, 0.3, 0.86, 0.5, fill=(22, 26, 38))
+    person(a, 0.7, 0.86, 0.5, fill=(22, 26, 38))
+    person(a, 0.5, 0.8, 0.42, fill=(16, 18, 28))
+    a.poly([(0.4, 0.62), (0.6, 0.62), (0.57, 1), (0.43, 1)], fill=(120, 84, 52), outline=INK, width=1.2)
+    a.circle(0.5, 0.78, 0.07, fill=GOLD, outline=INK, width=1)
+    a.line([(0.47, 0.62), (0.45, 0.5)], INK, 1.2)
+    a.line([(0.53, 0.62), (0.55, 0.5)], INK, 1.2)
+    a.tag("PRESSER  ·  IRAN", 0.03, 0.95, 10, WHITE, CRIMSON)
     a.save()
 
 
-# ---- G5. Florida floods ----------------------------------------------------
+# ---- G5. UN straw poll -----------------------------------------------------
+def art_un():
+    a = Art("art_08.png", GRID, (60, 120, 180))
+    a.rect(0, 0, 1, 1, fill=(64, 128, 188), outline=None)
+    # stylised globe with olive arcs (not the UN emblem itself)
+    a.circle(0.24, 0.42, 0.27, fill=(224, 238, 250), outline=WHITE, width=1.6)
+    a.arc(0.24, 0.42, 0.18, 0, 360, (64, 128, 188), 1.2)
+    a.arc(0.24, 0.42, 0.09, 0, 360, (64, 128, 188), 1.2)
+    a.line([(0.08, 0.42), (0.4, 0.42)], (64, 128, 188), 1.2)
+    a.line([(0.24, 0.16), (0.24, 0.68)], (64, 128, 188), 1.2)
+    a.arc(0.24, 0.42, 0.33, 110, 250, (250, 250, 250), 2)
+    a.arc(0.24, 0.42, 0.33, 290, 430, (250, 250, 250), 2)
+    # ballot box receiving red (P5) and white (E10) ballots
+    a.rect(0.52, 0.44, 0.92, 0.8, fill=(240, 240, 236), outline=INK, width=1.4)
+    a.rect(0.62, 0.42, 0.82, 0.47, fill=INK, outline=None)
+    for i, col in enumerate((RED, WHITE, RED, WHITE, WHITE)):
+        x = 0.56 + i * 0.075
+        y = 0.12 + (i % 2) * 0.1
+        a.rect(x, y, x + 0.06, y + 0.17, fill=col, outline=INK, width=1)
+    a.text(0.72, 0.62, "9TH POLL", 9, NAVY)
+    a.tag("UN  ·  NEXT CHIEF", 0.03, 0.95, 10, WHITE, NAVY)
+    a.save()
+
+
+# ---- G6. Saudi intercepts --------------------------------------------------
+def art_riyadh():
+    a = Art("art_09.png", GRID, (130, 170, 210))
+    for i in range(12):
+        t = i / 11
+        col = tuple(int(c0 + (c1 - c0) * t) for c0, c1 in zip((90, 130, 186), (238, 206, 160)))
+        a.rect(0, i * 0.06, 1, i * 0.06 + 0.061, fill=col, outline=None)
+    a.rect(0, 0.72, 1, 1, fill=(214, 176, 120), outline=None)
+    # skyline with a tall bottle-opener tower silhouette
+    for x0, x1, top in ((0.04, 0.12, 0.56), (0.13, 0.2, 0.48), (0.22, 0.28, 0.6),
+                        (0.62, 0.7, 0.52), (0.72, 0.8, 0.6), (0.82, 0.92, 0.5)):
+        a.rect(x0, top, x1, 0.74, fill=(70, 74, 86), outline=None)
+    a.poly([(0.38, 0.74), (0.43, 0.14), (0.49, 0.14), (0.54, 0.74)], fill=(58, 62, 76), outline=None)
+    a.poly([(0.425, 0.2), (0.495, 0.2), (0.48, 0.3), (0.44, 0.3)], fill=(150, 176, 210), outline=None)
+    # interceptor arcs and bursts
+    for sx, ex, ey in ((0.1, 0.3, 0.16), (0.9, 0.72, 0.14), (0.95, 0.86, 0.3)):
+        a.line([(sx, 0.72), ((sx + ex) / 2, ey + 0.18), (ex, ey)], (255, 250, 230), 1.6)
+        a.circle(ex, ey, 0.06, fill=GOLD, outline=ORANGE, width=1.4)
+    # drones (small deltas)
+    for x, y in ((0.62, 0.1), (0.7, 0.28), (0.18, 0.34)):
+        a.poly([(x - 0.03, y), (x + 0.03, y), (x, y + 0.06)], fill=INK, outline=None)
+    a.tag("RIYADH  ·  INTERCEPTS", 0.03, 0.95, 10, WHITE, CRIMSON)
+    a.save()
+
+
+# ---- G7. Florida floods ----------------------------------------------------
 def art_florida():
-    a = Art("art_08.png", GRID, (120, 140, 156))
+    a = Art("art_10.png", GRID, (120, 140, 156))
     a.rect(0, 0, 1, 0.6, fill=(122, 138, 152), outline=None)
     for x, y, s in ((0.15, 0.12, 0.12), (0.45, 0.08, 0.16), (0.8, 0.14, 0.12)):
         a.circle(x, y, s, fill=(92, 104, 118), outline=None)
@@ -440,120 +499,83 @@ def art_florida():
     a.save()
 
 
-# ---- G6. UN straw poll -----------------------------------------------------
-def art_un():
-    a = Art("art_09.png", GRID, (60, 120, 180))
-    a.rect(0, 0, 1, 1, fill=(64, 128, 188), outline=None)
-    # stylised globe with olive arcs (not the UN emblem itself)
-    a.circle(0.24, 0.42, 0.27, fill=(224, 238, 250), outline=WHITE, width=1.6)
-    a.arc(0.24, 0.42, 0.18, 0, 360, (64, 128, 188), 1.2)
-    a.arc(0.24, 0.42, 0.09, 0, 360, (64, 128, 188), 1.2)
-    a.line([(0.08, 0.42), (0.4, 0.42)], (64, 128, 188), 1.2)
-    a.line([(0.24, 0.16), (0.24, 0.68)], (64, 128, 188), 1.2)
-    a.arc(0.24, 0.42, 0.33, 110, 250, (250, 250, 250), 2)
-    a.arc(0.24, 0.42, 0.33, 290, 430, (250, 250, 250), 2)
-    # ballot box receiving red (P5) and white (E10) ballots
-    a.rect(0.52, 0.44, 0.92, 0.8, fill=(240, 240, 236), outline=INK, width=1.4)
-    a.rect(0.62, 0.42, 0.82, 0.47, fill=INK, outline=None)
-    for i, col in enumerate((RED, WHITE, RED, WHITE, WHITE)):
-        x = 0.56 + i * 0.075
-        y = 0.12 + (i % 2) * 0.1
-        a.rect(x, y, x + 0.06, y + 0.17, fill=col, outline=INK, width=1)
-    a.text(0.72, 0.62, "9TH POLL", 9, NAVY)
-    a.tag("UN  ·  NEXT CHIEF", 0.03, 0.95, 10, WHITE, NAVY)
+# ---- G8. China-Australia ---------------------------------------------------
+def art_china_aus():
+    a = Art("art_11.png", GRID, (172, 36, 40))
+    a.rect(0, 0, 1, 1, fill=(186, 50, 46), outline=None)
+    for i in range(14):
+        t = i * math.pi / 7
+        a.line([(0.5, 0.64), (0.5 + 0.7 * math.cos(t), 0.64 + 1.2 * math.sin(t))], (204, 72, 60), 3)
+    # PRC flag
+    a.rect(0.05, 0.1, 0.36, 0.46, fill=(222, 41, 16), outline=INK, width=1.2)
+    a.star(0.11, 0.2, 0.07, (255, 222, 0))
+    for dx, dy in ((0.17, 0.13), (0.195, 0.19), (0.195, 0.27), (0.17, 0.33)):
+        a.star(dx, dy, 0.025, (255, 222, 0))
+    # Australian flag
+    a.rect(0.64, 0.1, 0.95, 0.46, fill=(1, 33, 105), outline=INK, width=1.2)
+    union_jack(a, 0.64, 0.1, 0.795, 0.28)
+    a.star(0.715, 0.38, 0.05, WHITE, points=7)
+    for dx, dy in ((0.88, 0.15), (0.84, 0.26), (0.92, 0.3), (0.88, 0.4)):
+        a.star(dx, dy, 0.03, WHITE, points=7)
+    # handshake
+    a.rrect(0.26, 0.58, 0.48, 0.7, r=6, fill=(232, 196, 160), outline=INK, width=1.2)
+    a.rrect(0.52, 0.58, 0.74, 0.7, r=6, fill=(214, 172, 132), outline=INK, width=1.2)
+    a.circle(0.5, 0.64, 0.09, fill=GOLD, outline=INK, width=1.2)
+    a.tag("XI–ALBANESE", 0.03, 0.95, 10, WHITE, NAVY)
     a.save()
 
 
-# ---- G7. Hormuz insurance --------------------------------------------------
-def art_hormuz():
-    a = Art("art_10.png", GRID, (44, 112, 140))
-    a.rect(0, 0, 1, 0.5, fill=(184, 214, 230), outline=None)
-    a.rect(0, 0.5, 1, 1, fill=(36, 102, 132), outline=None)
-    a.poly([(0, 0.46), (0.14, 0.36), (0.3, 0.42), (0.36, 0.52), (0, 0.56)], fill=SAND, outline=INK, width=1)
-    a.poly([(1, 0.44), (0.86, 0.34), (0.7, 0.4), (0.66, 0.5), (1, 0.54)], fill=SAND, outline=INK, width=1)
-    for k in range(4):
-        a.line([(0.06 + k * 0.24, 0.86), (0.16 + k * 0.24, 0.86)], (120, 180, 200), 1.2)
-    # tanker
-    a.poly([(0.08, 0.62), (0.56, 0.62), (0.5, 0.78), (0.14, 0.78)], fill=(36, 40, 50), outline=INK, width=1.2)
-    a.rect(0.12, 0.5, 0.24, 0.62, fill=PAPER, outline=INK, width=1.1)
-    a.rect(0.15, 0.42, 0.2, 0.5, fill=CRIMSON, outline=None)
-    for k in range(4):
-        a.rect(0.28 + k * 0.06, 0.55, 0.32 + k * 0.06, 0.62, fill=(214, 140, 50), outline=None)
-    # premium document with rising arrow
-    a.rect(0.62, 0.06, 0.94, 0.62, fill=WHITE, outline=INK, width=1.3)
-    a.text(0.78, 0.16, "WAR RISK", 9, NAVY)
-    a.line([(0.66, 0.54), (0.73, 0.46), (0.79, 0.5), (0.89, 0.27)], CRIMSON, 2)
-    a.poly([(0.89, 0.22), (0.85, 0.32), (0.92, 0.32)], fill=CRIMSON, outline=None)
-    a.tag("HORMUZ  ·  PREMIUMS", 0.03, 0.95, 10, WHITE, NAVY)
+# ---- G9. Dakar migration ---------------------------------------------------
+def art_dakar():
+    a = Art("art_12.png", GRID, (60, 140, 170))
+    a.rect(0, 0, 1, 1, fill=(64, 146, 178), outline=None)
+    # West African bulge (land on the right)
+    a.poly([(0.42, 0), (1, 0), (1, 1), (0.6, 1), (0.52, 0.8), (0.46, 0.62), (0.36, 0.5),
+            (0.34, 0.4), (0.4, 0.26), (0.44, 0.12)], fill=(222, 196, 140), outline=INK, width=1.3)
+    a.poly([(0.6, 0.6), (1, 0.5), (1, 1), (0.6, 1)], fill=(150, 176, 104), outline=None)
+    # Dakar star on the Cap-Vert peninsula
+    a.star(0.355, 0.44, 0.09, CRIMSON)
+    # regional routes converging on Dakar
+    for (sx, sy) in ((0.92, 0.18), (0.94, 0.62), (0.76, 0.86), (0.7, 0.3)):
+        a.line([(sx, sy), ((sx + 0.36) / 2, (sy + 0.44) / 2 - 0.06), (0.38, 0.44)], (120, 40, 30), 1.6)
+        a.circle(sx, sy, 0.04, fill=NAVY, outline=WHITE, width=1)
+    # pirogue on the Atlantic
+    a.poly([(0.04, 0.72), (0.28, 0.72), (0.24, 0.82), (0.08, 0.82)], fill=(236, 112, 40), outline=INK, width=1.2)
+    a.rect(0.04, 0.7, 0.28, 0.73, fill=GOLD, outline=None)
+    for k in range(3):
+        a.line([(0.04 + k * 0.08, 0.9), (0.1 + k * 0.08, 0.9)], (170, 214, 230), 1.2)
+    a.tag("DAKAR  ·  ROADMAP", 0.03, 0.27, 10, WHITE, (46, 125, 80))
     a.save()
 
 
-# ---- G8. Rand slide --------------------------------------------------------
-def art_rand():
-    a = Art("art_11.png", GRID, (230, 238, 226))
-    a.rect(0, 0, 1, 1, fill=(232, 238, 228), outline=None)
-    for k in range(5):
-        a.line([(0.04, 0.12 + k * 0.16), (0.96, 0.12 + k * 0.16)], (196, 206, 196), 1)
-    # falling rand line
-    pts = [(0.06, 0.18), (0.18, 0.24), (0.28, 0.2), (0.4, 0.36), (0.52, 0.32), (0.64, 0.5), (0.76, 0.48), (0.9, 0.68)]
-    a.line(pts, CRIMSON, 2.4)
-    a.poly([(0.94, 0.76), (0.85, 0.7), (0.92, 0.62)], fill=CRIMSON, outline=None)
-    # coin
-    a.circle(0.2, 0.62, 0.22, fill=GOLD, outline=INK, width=1.5)
-    a.circle(0.2, 0.62, 0.16, fill=None, outline=(190, 130, 30), width=1.2)
-    a.text(0.2, 0.6, "R", 22, INK, SERIF_BOLD)
-    a.tag("RAND  ·  1-YR LOW", 0.42, 0.95, 10, WHITE, GREEN)
+# ---- G10. BepiColombo ------------------------------------------------------
+def art_bepi():
+    a = Art("art_13.png", GRID, (10, 14, 28))
+    a.rect(0, 0, 1, 1, fill=(12, 16, 30), outline=None)
+    for i in range(40):
+        fx = (i * 0.6180339) % 1.0
+        fy = (i * 0.381966 + 0.11) % 1.0
+        a.circle(fx, fy, 0.008 + (i % 3) * 0.004, fill=(220, 224, 236), outline=None)
+    # the Sun's glare at the left edge
+    a.circle(-0.08, 0.5, 0.5, fill=(250, 196, 80), outline=None)
+    a.circle(-0.08, 0.5, 0.38, fill=(255, 232, 150), outline=None)
+    # Mercury with craters
+    a.circle(0.62, 0.52, 0.34, fill=(150, 146, 140), outline=(210, 206, 198), width=1.4)
+    for x, y, r in ((0.56, 0.4, 0.06), (0.68, 0.62, 0.08), (0.6, 0.66, 0.035), (0.7, 0.36, 0.04)):
+        a.circle(x, y, r, fill=(118, 114, 110), outline=None)
+    # dashed capture orbit
+    for k in range(0, 360, 20):
+        a.d.arc(a.box(0.38, 0.12, 0.86, 0.92), k, k + 11, fill=(120, 200, 230), width=a.lw(1.4))
+    # spacecraft: body, solar wing
+    a.rect(0.84, 0.16, 0.9, 0.3, fill=(230, 200, 120), outline=INK, width=1)
+    a.rect(0.9, 0.2, 0.99, 0.26, fill=(60, 90, 170), outline=(200, 210, 230), width=0.8)
+    a.rect(0.75, 0.2, 0.84, 0.26, fill=(60, 90, 170), outline=(200, 210, 230), width=0.8)
+    a.tag("MERCURY  ·  SAT 21 NOV", 0.03, 0.95, 10, WHITE, (74, 85, 99))
     a.save()
 
 
-# ---- G9. Seoul cholera -----------------------------------------------------
-def art_cholera():
-    a = Art("art_12.png", GRID, (220, 236, 240))
-    a.rect(0, 0, 1, 1, fill=(222, 238, 242), outline=None)
-    # magnifier over curved comma-shaped bacteria
-    a.circle(0.36, 0.44, 0.34, fill=(246, 252, 252), outline=INK, width=2)
-    for x, y, rot in ((0.28, 0.32, 0), (0.42, 0.5, 40), (0.3, 0.58, -30), (0.44, 0.3, 70)):
-        a.arc(x, y, 0.08, 200 + rot, 330 + rot, (40, 140, 110), 3)
-        a.circle(x + 0.03, y - 0.02, 0.012, fill=(40, 140, 110), outline=None)
-    a.line([(0.54, 0.72), (0.66, 0.94)], INK, 4)
-    # tap with a droplet: safe-water advice
-    a.rect(0.7, 0.18, 0.94, 0.28, fill=GREY, outline=INK, width=1.2)
-    a.rect(0.86, 0.28, 0.92, 0.42, fill=GREY, outline=INK, width=1.2)
-    a.circle(0.89, 0.55, 0.06, fill=(90, 170, 220), outline=INK, width=1)
-    a.tag("SEOUL  ·  CHOLERA", 0.03, 0.95, 10, WHITE, TEAL)
-    a.save()
-
-
-# ---- G10. U-17 World Cup ---------------------------------------------------
-def art_u17():
-    a = Art("art_13.png", GRID, (40, 120, 70))
-    a.rect(0, 0, 1, 1, fill=(52, 134, 78), outline=None)
-    for k in range(6):
-        if k % 2:
-            a.rect(k / 6, 0, (k + 1) / 6, 1, fill=(60, 146, 86), outline=None)
-    a.circle(0.5, 0.5, 0.26, fill=None, outline=WHITE, width=1.4)
-    a.line([(0.5, 0), (0.5, 1)], WHITE, 1.4)
-    # ball
-    a.circle(0.5, 0.5, 0.13, fill=WHITE, outline=INK, width=1.3)
-    a.star(0.5, 0.5, 0.06, INK, points=5, inner=0.75)
-    # Morocco, Senegal, Mali flags
-    fy0, fy1 = 0.08, 0.32
-    a.rect(0.05, fy0, 0.27, fy1, fill=(193, 39, 45), outline=INK, width=1)
-    a.star(0.16, 0.2, 0.085, (0, 98, 51), inner=0.38)
-    a.star(0.16, 0.2, 0.05, (193, 39, 45), inner=0.38)
-    for i, col in enumerate(((0, 133, 63), (253, 239, 66), (227, 27, 35))):
-        a.rect(0.39 + i * 0.073, fy0, 0.39 + (i + 1) * 0.073, fy1, fill=col, outline=None)
-    a.rect(0.39, fy0, 0.61, fy1, fill=None, outline=INK, width=1)
-    a.star(0.5, 0.2, 0.06, (0, 133, 63))
-    for i, col in enumerate(((20, 181, 58), (252, 209, 22), (206, 17, 38))):
-        a.rect(0.73 + i * 0.073, fy0, 0.73 + (i + 1) * 0.073, fy1, fill=col, outline=None)
-    a.rect(0.73, fy0, 0.95, fy1, fill=None, outline=INK, width=1)
-    a.tag("U-17  ·  DOHA", 0.03, 0.95, 10, WHITE, CRIMSON)
-    a.save()
-
-
-ART_FUNCS = [art_kyiv, art_akvan, art_euuk, art_cop31, art_riyadh, art_italy,
-             art_china_aus, art_florida, art_un, art_hormuz, art_rand, art_cholera, art_u17]
+ART_FUNCS = [art_kyiv, art_akvan, art_chips, art_euuk, art_cop31, art_italy, art_trump,
+             art_un, art_riyadh, art_florida, art_china_aus, art_dakar, art_bepi]
 
 
 def build_all():

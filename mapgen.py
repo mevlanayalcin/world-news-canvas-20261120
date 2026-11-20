@@ -1,6 +1,6 @@
-"""Locator map for the v2 front page: Natural Earth 110m land, Miller projection.
+"""Locator map for the v3 front page: Natural Earth 110m land, Miller projection.
 
-The map is emitted as an inline SVG at its printed size (300 x 148), so pins
+The map is emitted as an inline SVG at its printed size (300 x 130), so pins
 and numbers are vector-sharp on the page. Pins that would overlap are pushed
 apart by a fixed, deterministic relaxation and tied back with a leader line.
 """
@@ -13,11 +13,11 @@ from pathlib import Path
 BASE = Path(__file__).resolve().parent
 ASSETS = BASE / "assets"
 
-W, H = 300, 144
-LON0, LON1 = -102.0, 162.0
-LAT_TOP, LAT_BOT = 63.0, -45.0
-PIN_R = 6.6
-MIN_GAP = 14.2  # centre-to-centre distance between pins, px
+W, H = 300, 130
+LON0, LON1 = -100.0, 180.0
+LAT_TOP, LAT_BOT = 62.0, -46.0
+PIN_R = 6.2
+MIN_GAP = 13.0  # centre-to-centre distance between pins, px
 
 REGION_COLORS = {
     "ASIA-PACIFIC": "#9A1B1F",
@@ -49,8 +49,9 @@ def relax(points: list[tuple[float, float]]) -> list[tuple[float, float]]:
     pos = [list(p) for p in points]
     lo_x, hi_x = PIN_R + 2, W - PIN_R - 2
     lo_y, hi_y = PIN_R + 2, H - PIN_R - 2
-    for _ in range(600):
+    for it in range(2400):
         moved = False
+        pull = 0.02 if it < 1600 else 0.0  # settle with pure pushes at the end
         for i in range(len(pos)):
             for j in range(i + 1, len(pos)):
                 dx = pos[j][0] - pos[i][0]
@@ -68,11 +69,11 @@ def relax(points: list[tuple[float, float]]) -> list[tuple[float, float]]:
                     moved = True
         for p, (ox, oy) in zip(pos, points):
             # gentle pull home keeps pins near their places
-            p[0] += (ox - p[0]) * 0.02
-            p[1] += (oy - p[1]) * 0.02
+            p[0] += (ox - p[0]) * pull
+            p[1] += (oy - p[1]) * pull
             p[0] = min(hi_x, max(lo_x, p[0]))
             p[1] = min(hi_y, max(lo_y, p[1]))
-        if not moved:
+        if not moved and it >= 1600:
             break
     return [(round(x, 2), round(y, 2)) for x, y in pos]
 
@@ -113,7 +114,7 @@ def svg(pins) -> str:
             dots.append(f'<circle cx="{tx:.1f}" cy="{ty:.1f}" r="1.6" fill="{col}"/>')
         marks.append(
             f'<g class="pin" data-pin="{n}"><circle cx="{px:.1f}" cy="{py:.1f}" r="{PIN_R}" fill="{col}"/>'
-            f'<text x="{px:.1f}" y="{py + 3.2:.1f}">{n}</text></g>'
+            f'<text x="{px:.1f}" y="{py + 3.1:.1f}">{n}</text></g>'
         )
     return f'''<svg class="mapsvg" xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}">
 <rect width="{W}" height="{H}" fill="#D9E8F1"/>
@@ -121,7 +122,7 @@ def svg(pins) -> str:
 <path d="{land_path()}" fill="#E9DFC6" stroke="#8E9A9E" stroke-width="0.6"/>
 <g stroke="#141923" stroke-width="1">{''.join(leaders)}</g>
 {''.join(dots)}
-<g font-family="LatoX" font-weight="900" font-size="9.4" fill="#FFFFFF" text-anchor="middle" stroke="none">
+<g font-family="LatoX" font-weight="900" font-size="9" fill="#FFFFFF" text-anchor="middle" stroke="none">
 <g stroke="#FFFFFF" stroke-width="1.3">{''.join(m.replace('<text', '<text stroke="none"') for m in marks)}</g>
 </g>
 </svg>'''
