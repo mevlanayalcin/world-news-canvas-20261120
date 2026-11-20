@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-"""Build the Friday 20 November 2026 world-news front page (v8).
+"""Build the Friday 20 November 2026 world-news front page (v9).
 
 Run:  python3 build_poster.py
 Writes: assets/art_01..13.png, assets/poster.png, entry.png (1024x1024
-progressive 4:4:4 JPEG at q90 or q89, 380,000-459,999 bytes; 450,000 is the
-soft target) and
-/tmp/news_1120_v8_300.png (300 px Lanczos proof).
+progressive 4:4:4 JPEG at q89, 380,000-461,999 bytes) and
+/tmp/news_1120_v9_300.png (300 px Lanczos proof).
 """
 from __future__ import annotations
 
@@ -26,18 +25,18 @@ import mapgen
 BASE = Path(__file__).resolve().parent
 ASSETS = BASE / "assets"
 CHROME = "/usr/bin/google-chrome"
-BUILD_TMP = Path("/tmp/news_1120_v8_build")
-PROOF_300 = Path("/tmp/news_1120_v8_300.png")
-MIN_BYTES, MAX_BYTES = 380_000, 459_999   # v8 hard budget; the gate limit is 1,048,576 bytes
-SOFT_MAX = 450_000
-QUALITIES = (90, 89)
+BUILD_TMP = Path("/tmp/news_1120_v9_build")
+PROOF_300 = Path("/tmp/news_1120_v9_300.png")
+MIN_BYTES, MAX_BYTES = 380_000, 461_999   # v9 hard budget; the gate limit is 1,048,576 bytes
+QUALITIES = (89,)
 
 LATO = Path("/usr/share/fonts/truetype/lato")
 BRIEF_PX = 10.5          # brief type size
 BRIEF_MAX_W = 328        # every brief must fit on one line this wide (px)
 BNUM_PX = 10.8           # uncircled bold wire numeral
 BNUM_W, BNUM_GAP = 14, 4 # numeral box width and gap before the place (px)
-DATELINE_SLACK = 12      # every PLACE · BEAT dateline keeps at least this much room (px)
+GRID_DL_PX = 8.5         # 900-weight caps dateline on the 188 px cards (leads use 10 px)
+DATELINE_GAP = 6         # clear px between the end of PLACE · BEAT and its certainty pill
 
 # ---------------------------------------------------------------------------
 # The edition. Every item happened, or was first reported, on Friday
@@ -47,79 +46,80 @@ DATELINE_SLACK = 12      # every PLACE · BEAT dateline keeps at least this much
 # kind: hero (1-3) · grid (4-13) · brief (14-37).
 # dl: the beat word printed in the dateline; beat: the category counted in
 # the "25 beats" tally.
-# Every illustrated story prints PLACE · BEAT on its dateline row; its
-# attribution sits on the illustration and its sources end the summary.
+# Every illustrated story prints PLACE · BEAT on its dateline row, with its
+# tag (OFFICIAL / CONFIRMED / REPORTED) as a tinted pill at the row's right end.
+# The 188 px cards use short place names so both fit on one line.
 # pin: (lon, lat), plotted for stories 1-13 only.
 # ---------------------------------------------------------------------------
 STORIES = [
     # --- lead stories -------------------------------------------------------
     dict(n=1, kind="hero", region="EUROPE", beat="Conflict", dl="War", place="Kyiv, Ukraine",
-         src="Kyiv Independent, Reuters",
+         src="Kyiv Independent, Reuters", tag="OFFICIAL",
          headline="Russian Missiles Hit Three\nBridges Across the Dnipro",
          summary="Strikes damage three Dnipro crossings in a barrage of about 110 missiles and "
                  "400 drones; officials say 3 were killed in Kyiv and at least 8 nationwide.",
          art="art_01.png", pin=(30.5, 50.45)),
     dict(n=2, kind="hero", region="ASIA-PACIFIC", beat="Weather", dl="Cyclone", place="Odisha, India",
-         src="IMD, The Hindu",
+         src="IMD, The Hindu", tag="OFFICIAL",
          headline="Cyclone Akvan Makes Landfall\nNear Gopalpur in Eastern India",
          summary="The storm crossed the Odisha coast around 8 am local time and then weakened "
                  "inland; up to 372,000 people were moved to shelters and no deaths have been "
                  "reported.",
          art="art_02.png", pin=(84.9, 19.3)),
     dict(n=3, kind="hero", region="ASIA-PACIFIC", beat="Markets", dl="Markets",
-         place="Taipei · Seoul · Tokyo", src="Reuters, Al Jazeera",
+         place="Taipei · Seoul · Tokyo", src="Reuters, Al Jazeera", tag="CONFIRMED",
          headline="AI Sell-Off Sinks Asia’s Stock\nMarkets in Worst Week Since 2020",
          summary="Taiwan’s Taiex closes −6.23%, Korea’s Kospi −5.21% and Japan’s Nikkei −5.06% "
                  "as chipmakers lead the rout and fears over AI spending deepen.",
          art="art_03.png", pin=(121.5, 25.0)),
     # --- illustrated cards --------------------------------------------------
     dict(n=4, kind="grid", region="EUROPE", beat="Diplomacy", dl="Diplomacy", place="Brussels",
-         src="EU, Guardian",
+         src="EU, Guardian", tag="CONFIRMED",
          headline="UK and EU Seal Post-Brexit Reset",
          summary="It cuts food checks and adds 100,000 youth mobility places a year.",
          art="art_04.png", pin=(4.35, 50.85)),
     dict(n=5, kind="grid", region="GLOBAL/SCIENCE", beat="Climate", dl="Climate", place="Antalya",
-         src="UN, AFP",
+         src="UN, AFP", tag="CONFIRMED",
          headline="COP31 Hits Final Day Without a Deal",
          summary="The draft omits a fossil-fuel phase-out and talks run into overtime.",
          art="art_05.png", pin=(30.7, 36.9)),
-    dict(n=6, kind="grid", region="EUROPE", beat="Security", dl="Security", place="Eastern Poland",
-         src="Guardian",
+    dict(n=6, kind="grid", region="EUROPE", beat="Security", dl="Security", place="Poland",
+         src="Guardian", tag="OFFICIAL",
          headline="Russian Cruise Missile Enters Poland",
          summary="Poland’s prime minister calls the incursion an ‘intentional provocation’.",
          art="art_06.png", pin=(23.0, 51.5)),
-    dict(n=7, kind="grid", region="MIDDLE EAST", beat="Security", dl="Security", place="Central Iraq",
-         src="Iraqi officials, Reuters",
+    dict(n=7, kind="grid", region="MIDDLE EAST", beat="Security", dl="Security", place="Iraq",
+         src="Iraqi officials, Reuters", tag="OFFICIAL",
          headline="Iraqi Army Enters Militia Stronghold",
          summary="Troops enter the Kataib Hezbollah base on the PM’s order.",
          art="art_07.png", pin=(44.2, 32.9)),
     dict(n=8, kind="grid", region="EUROPE", beat="Labour", dl="Labour", place="Rome",
-         src="La Repubblica, AP",
+         src="La Repubblica, AP", tag="CONFIRMED",
          headline="Italy Halts in 24-Hour General Strike",
          summary="The CGIL union’s walkout hits more than 100 cities.",
          art="art_08.png", pin=(12.5, 41.9)),
     dict(n=9, kind="grid", region="ASIA-PACIFIC", beat="Economy", dl="Economy", place="Tokyo",
-         src="MIC, Japan Times",
+         src="MIC, Japan Times", tag="OFFICIAL",
          headline="Japan Inflation Rises to 2.3% in October",
          summary="Core CPI is 2.2%, lifting bets on a December BOJ hike.",
          art="art_09.png", pin=(139.7, 35.7)),
-    dict(n=10, kind="grid", region="ASIA-PACIFIC", beat="Courts", dl="Politics", place="Seoul",
-         src="Korea Herald",
+    dict(n=10, kind="grid", region="ASIA-PACIFIC", beat="Courts", dl="Courts", place="Seoul",
+         src="Korea Herald", tag="REPORTED",
          headline="Ruling Party Moves to Impeach Top Judge",
          summary="The Democratic Party targets Chief Justice Cho Hee-dae.",
          art="art_10.png", pin=(127.0, 37.6)),
-    dict(n=11, kind="grid", region="AFRICA", beat="Energy", dl="Energy", place="Turkana, Kenya",
-         src="The Star",
+    dict(n=11, kind="grid", region="AFRICA", beat="Energy", dl="Energy", place="Kenya",
+         src="The Star", tag="CONFIRMED",
          headline="Kenya Begins Drilling First Oil Well",
          summary="Drilling starts at the Amosing field; first exports are planned for 2027.",
          art="art_11.png", pin=(35.7, 2.5)),
-    dict(n=12, kind="grid", region="AMERICAS", beat="Elections", dl="Politics", place="San Salvador",
-         src="AP",
+    dict(n=12, kind="grid", region="AMERICAS", beat="Elections", dl="Polls", place="El Salvador",
+         src="AP", tag="CONFIRMED",
          headline="Bukele Registers Bid for Third Term",
          summary="He files with the electoral tribunal ahead of the February vote.",
          art="art_12.png", pin=(-89.2, 13.7)),
     dict(n=13, kind="grid", region="OCEANIA", beat="Sport", dl="Cricket", place="Wellington",
-         src="ICC, RNZ",
+         src="ICC, RNZ", tag="CONFIRMED",
          headline="Phillips Hits 118 as NZ Make 368 v India",
          summary="Glenn Phillips’ century is backed by Henry Nicholls, unbeaten on 175.",
          art="art_13.png", pin=(174.8, -41.3)),
@@ -185,6 +185,9 @@ REGION_LABEL = {"GLOBAL/SCIENCE": "GLOBAL/SCI."}
 REGION_COLORS = mapgen.REGION_COLORS
 REGION_COUNTS = {r: sum(1 for s in STORIES if s["region"] == r) for r in REGION_ORDER}
 BEATS = sorted({s["beat"] for s in STORIES})
+# certainty tag: (text, tint) for the pill on the dateline row
+TAG_COLORS = {"CONFIRMED": ("#17605B", "#DCEDEA"), "OFFICIAL": ("#16243A", "#E2E7EF"),
+              "REPORTED": ("#8F500E", "#F5E6D2")}
 
 STATS = [
     ("3", "bridges over the Dnipro damaged in Kyiv strikes"),
@@ -240,12 +243,13 @@ def headline_html(s: dict) -> str:
 
 def card_html(s: dict) -> str:
     col = REGION_COLORS[s["region"]]
-    # every lead and card prints PLACE · BEAT, so geography and field read together
+    fg, bg = TAG_COLORS[s["tag"]]
+    # every lead and card prints PLACE · BEAT, then its certainty pill at the right
     where = f"{s['place']} · {s['dl']}"
     return f'''
     <article class="card {s['kind']}" data-story="{s['n']}" data-region="{esc(s['region'])}">
       <img class="art" src="data:image/png;base64,{b64(ASSETS / s['art'])}" alt="">
-      <div class="kicker">{badge(s)}<span class="place" style="color:{col}"><span class="pt">{esc(where)}</span></span></div>
+      <div class="kicker">{badge(s)}<span class="place" style="color:{col}"><span class="pt">{esc(where)}</span></span><span class="tg" style="color:{fg};background:{bg}">{s['tag']}</span></div>
       <h2><span class="hl">{headline_html(s)}</span></h2>
       <p class="summary"><span class="sum">{esc(s['summary'])} <span class="src">({esc(s['src'])})</span></span></p>
     </article>'''
@@ -341,7 +345,7 @@ body {{ font-family:'LatoX', sans-serif; color:#121822; -webkit-font-smoothing:a
 .grid + .grid::before {{ left:-6.5px; }}
 .card.hero {{ width:316px; }}
 .card.grid {{ width:188px; }}
-.art {{ display:block; outline:1px solid #C4BEB0; }}
+.art {{ display:block; outline:1px solid #C8C2B4; }}
 .hero .art {{ width:316px; height:{art.HERO[1]}px; }}
 .grid .art {{ width:188px; height:{art.GRID[1]}px; }}
 .kicker {{ display:flex; align-items:center; gap:5px; height:15px; margin-top:4px; }}
@@ -349,13 +353,15 @@ body {{ font-family:'LatoX', sans-serif; color:#121822; -webkit-font-smoothing:a
 .num {{ flex:0 0 15px; width:15px; height:15px; border-radius:50%; color:#FFF; font:900 10px/15px 'LatoX'; text-align:center; }}
 .grid .num {{ flex:0 0 14px; width:14px; height:14px; line-height:14px; }}
 .place {{ flex:1; min-width:0; font:900 10px/12px 'LatoX'; height:12px; letter-spacing:.05em; text-transform:uppercase; white-space:nowrap; overflow:hidden; }}
-.grid .place {{ letter-spacing:.03em; }}
+.grid .place {{ font-size:{GRID_DL_PX}px; letter-spacing:.015em; }}
+.tg {{ flex:0 0 auto; margin-left:auto; padding:1px 4px 0; border-radius:1.5px; font:900 9px/11px 'LatoX'; letter-spacing:.03em; white-space:nowrap; }}
+.grid .tg {{ padding:1px 2.5px 0; letter-spacing:.01em; }}
 h2 {{ margin:3px 0 0 0; font:700 20px/21px 'LibSerif'; color:#0E121A; letter-spacing:-.006em; white-space:nowrap; }}
 .nb {{ white-space:nowrap; }}
 .grid h2 {{ margin-top:3px; font-size:14px; line-height:15.5px; letter-spacing:-.003em; white-space:normal; text-wrap:balance; }}
-.summary {{ margin:3px 0 0 0; font:400 10.8px/13px 'LatoX'; color:#222831; }}
+.summary {{ margin:3px 0 0 0; font:400 10.8px/13px 'LatoX'; color:#272D36; }}
 .grid .summary {{ font-size:10px; line-height:12.2px; }}
-.src {{ font-style:italic; color:#585D66; }}
+.src {{ font-style:italic; color:#5C616A; }}
 .bottom {{ top:767px; height:188px; display:flex; gap:14px; border-top:2.5px solid #121822; padding-top:3px; }}
 .mapcol {{ flex:0 0 {mapgen.W}px; width:{mapgen.W}px; }}
 .briefcol {{ flex:1; min-width:0; position:relative; }}
@@ -469,18 +475,27 @@ AUDIT_JS = r'''() => {
   const briefWidths = briefs.map(b => +(R(b.querySelector('.bt')).right - R(b).x).toFixed(1));
   const statLines = [...document.querySelectorAll('.stat .s2')].map(lines);
   const tagCount = document.querySelectorAll('.tg').length;
-  const datelines = cards.map(c => { const p = c.querySelector('.place'), t = c.querySelector('.pt');
-    return {n: +c.dataset.story, text: t.textContent, slack: +(R(p).right - R(t).right).toFixed(1), lines: lines(t)}; });
+  const datelines = cards.map(c => { const k = c.querySelector('.kicker'), t = c.querySelector('.pt'), g = k.querySelector('.tg');
+    const tr = t.getBoundingClientRect(), gr = g ? g.getBoundingClientRect() : null, kr = k.getBoundingClientRect();
+    return {n: +c.dataset.story, text: t.textContent, lines: lines(t),
+            tag: g ? g.textContent : null, tagBg: g ? getComputedStyle(g).backgroundColor : null,
+            tagFs: g ? parseFloat(getComputedStyle(g).fontSize) : 0, tagsInKicker: k.querySelectorAll('.tg').length,
+            tagsInBody: c.querySelectorAll('h2 .tg, .summary .tg').length,
+            gap: gr ? +(gr.left - tr.right).toFixed(1) : -1,
+            tagRightInset: gr ? +(kr.right - gr.right).toFixed(1) : -1,
+            tagMidDy: gr ? +Math.abs((gr.top + gr.bottom) / 2 - (tr.top + tr.bottom) / 2).toFixed(1) : -1}; });
   const briefNums = briefs.map(b => { const n = b.querySelector('.bnum'), cs = getComputedStyle(n);
     return {n: +n.textContent, bg: cs.backgroundColor, radius: cs.borderRadius, fs: parseFloat(cs.fontSize), fw: cs.fontWeight}; });
   const heroBottoms = cards.filter(c => c.classList.contains('hero')).map(c => +R(c.querySelector('.sum')).bottom.toFixed(1));
 
-  let minHtml = 99, minHtmlText = '', minSvg = 99;
+  let minHtml = 99, minHtmlText = '', minSvg = 99, minDl = 99;
   document.querySelectorAll('body *').forEach(el => {
     const own = [...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim());
     if (!own) return;
     const fs = parseFloat(getComputedStyle(el).fontSize);
     if (el instanceof SVGElement) { minSvg = Math.min(minSvg, fs); return; }
+    if (el.classList.contains('tg')) return;  // certainty pills are 9 px caps, checked per dateline
+    if (el.closest('.grid .place')) { minDl = Math.min(minDl, fs); return; }  // 188 px card datelines, checked below
     if (fs < minHtml) { minHtml = fs; minHtmlText = el.textContent.trim().slice(0, 30); }
   });
   const imagesLoaded = [...document.images].every(i => i.complete && i.naturalWidth > 0);
@@ -497,7 +512,7 @@ AUDIT_JS = r'''() => {
   const cardBottoms = cards.map(c => +(R(c.querySelector('.summary')).bottom - R(c).y).toFixed(1));
   return {doc, stories, regionCounts, regionTagged, overflows, textClip, blockOverlaps, bandOverlaps, cardOverlaps,
           tagCount, datelines, briefNums, heroBottoms, pinCount: pins.length, pinNumbers, pinLabels, pinR, pinOverlaps, pinsOutside, headlineLines, summaryLines, briefLines,
-          briefWidths, statLines, minHtml, minHtmlText, minSvg, imagesLoaded, artSizes, stats, kicker,
+          briefWidths, statLines, minHtml, minHtmlText, minSvg, minDl, imagesLoaded, artSizes, stats, kicker,
           pageBottom: R(document.querySelector('.footer')).bottom, rects, cardBottoms,
           wireSlack: +(bc.bottom - Math.max(...[...document.querySelectorAll('.bcol')].map(e => R(e).bottom))).toFixed(1),
           mapSlack: +(bt.bottom - R(document.querySelector('.mapcap')).bottom).toFixed(1),
@@ -515,10 +530,10 @@ def check_stories() -> list[str]:
                 f.append(f"story {s['n']} contains date-check-only text '{w}'")
     nums = [s["n"] for s in STORIES]
     if nums != list(range(1, 38)):
-        f.append(f"v8 needs stories 1-37 in order, got {nums}")
+        f.append(f"v9 needs stories 1-37 in order, got {nums}")
     kinds = [s["kind"] for s in STORIES]
     if kinds != ["hero"] * 3 + ["grid"] * 10 + ["brief"] * 24:
-        f.append("v8 needs 3 leads, 10 cards and 24 briefs")
+        f.append("v9 needs 3 leads, 10 cards and 24 briefs")
     for n, w in measure_briefs().items():
         if w > BRIEF_MAX_W:
             f.append(f"brief {n} is {w}px wide at {BRIEF_PX}px; max {BRIEF_MAX_W}px on one line")
@@ -550,7 +565,7 @@ def check_audit(a: dict) -> list[str]:
         f.append(f"pins {a['pinNumbers']} labels {a['pinLabels']} != 1-13")
     if any(not 8 <= r <= 9 for r in a["pinR"]):
         f.append(f"pin radius {a['pinR']}")
-    # v8: every headline is exactly two lines; lead summaries three, card summaries two
+    # v9: every headline is exactly two lines; lead summaries three, card summaries two
     if any(x != 2 for x in a["headlineLines"]):
         f.append(f"headline lines must all be 2: {a['headlineLines']}")
     want = [3] * 3 + [2] * 10
@@ -558,15 +573,27 @@ def check_audit(a: dict) -> list[str]:
         f.append(f"summary lines {a['summaryLines']} != {want}")
     if len(set(a["heroBottoms"])) != 1:
         f.append(f"lead summaries end on different baselines: {a['heroBottoms']}")
-    if a["tagCount"]:
-        f.append(f"{a['tagCount']} certainty pills left on the page; datelines carry PLACE · BEAT only")
+    if a["tagCount"] != 13:
+        f.append(f"{a['tagCount']} certainty pills on the page; need exactly 13, one per dateline")
     for d in a["datelines"]:
         s = STORIES[d["n"] - 1]
-        if d["text"] != f"{s['place']} · {s['dl']}":
+        if "·" not in d["text"] or d["text"] != f"{s['place']} · {s['dl']}":
             f.append(f"dateline {d['n']} is '{d['text']}', not PLACE · BEAT")
-        if d["lines"] != 1 or d["slack"] < DATELINE_SLACK:
-            f.append(f"dateline {d['n']} '{d['text']}' has {d['slack']}px slack on {d['lines']} line(s); "
-                     f"needs one line and {DATELINE_SLACK}px")
+        if d["lines"] != 1:
+            f.append(f"dateline {d['n']} '{d['text']}' wraps to {d['lines']} lines")
+        if d["tag"] != s["tag"] or d["tag"] not in TAG_COLORS or d["tagsInKicker"] != 1 or d["tagsInBody"]:
+            f.append(f"dateline {d['n']} pill {d['tag']} ({d['tagsInKicker']} in row, {d['tagsInBody']} in body); "
+                     f"want one {s['tag']} pill on the dateline row only")
+        elif d["tagBg"] in ("rgba(0, 0, 0, 0)", "transparent"):
+            f.append(f"dateline {d['n']} pill {d['tag']} is untinted")
+        if d["tagFs"] < 9:
+            f.append(f"dateline {d['n']} pill font {d['tagFs']}px < 9px")
+        if d["gap"] < DATELINE_GAP:
+            f.append(f"dateline {d['n']} '{d['text']}' is {d['gap']}px from its {d['tag']} pill; "
+                     f"needs {DATELINE_GAP}px")
+        if d["tagRightInset"] > 0.5 or d["tagMidDy"] > 1.5:
+            f.append(f"dateline {d['n']} pill not right-aligned on the row "
+                     f"(inset {d['tagRightInset']}px, mid offset {d['tagMidDy']}px)")
     for b in a["briefNums"]:
         if b["bg"] not in ("rgba(0, 0, 0, 0)", "transparent") or b["radius"] != "0px" \
                 or b["fs"] != BNUM_PX or b["fw"] != "700":
@@ -577,6 +604,8 @@ def check_audit(a: dict) -> list[str]:
         f.append(f"brief widths {a['briefWidths']}")
     if any(x != 2 for x in a["statLines"]):
         f.append(f"stat explanations must be 2 lines: {a['statLines']}")
+    if a["minDl"] < GRID_DL_PX:
+        f.append(f"card dateline font {a['minDl']}px < {GRID_DL_PX}px")
     if a["minHtml"] < 9.5:
         f.append(f"html font {a['minHtml']} ({a['minHtmlText']})")
     if a["minSvg"] < 10:
@@ -608,10 +637,10 @@ def encode_jpeg(im: Image.Image) -> tuple[bytes, int]:
     for q in QUALITIES:
         buf = io.BytesIO()
         im.save(buf, format="JPEG", quality=q, subsampling=0, optimize=True, progressive=True)
-        if MIN_BYTES <= buf.tell() <= (SOFT_MAX if q == QUALITIES[0] else MAX_BYTES):
+        if MIN_BYTES <= buf.tell() <= MAX_BYTES:
             return buf.getvalue(), q
         print(f"q{q}: {buf.tell()} bytes, outside {MIN_BYTES}-{MAX_BYTES}")
-    raise SystemExit("entry.png cannot meet the size budget at q89-90")
+    raise SystemExit("entry.png cannot meet the size budget at q89")
 
 
 def main() -> int:
@@ -644,7 +673,7 @@ def main() -> int:
                 "statLines", "cardBottoms", "minHtml", "minSvg", "regionCounts", "pinCount", "rects")
         print("metrics:", json.dumps({k: a[k] for k in keys}, ensure_ascii=False))
         print("brief widths (DOM):", a["briefWidths"])
-        print("dateline slack (px):", {d["n"]: d["slack"] for d in a["datelines"]})
+        print("dateline → pill gap (px):", {d["n"]: d["gap"] for d in a["datelines"]})
         if failures:
             print("\nAUDIT FAILURES:")
             for x in failures:

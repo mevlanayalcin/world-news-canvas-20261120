@@ -126,7 +126,7 @@ class Art:
         self.d.polygon(pts, fill=fill)
 
     def gradient(self, top, bottom, y0=0.0, y1=1.0, steps=24):
-        steps = max(steps, 48)  # smooth bands: no visible steps, fewer JPEG edges
+        steps = max(steps, 128)  # smooth bands: no visible steps, fewer JPEG edges
         for i in range(steps):
             t = i / (steps - 1)
             col = tuple(int(a + (b - a) * t) for a, b in zip(top, bottom))

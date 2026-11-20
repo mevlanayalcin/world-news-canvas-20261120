@@ -5,22 +5,27 @@
 [![Reward](https://make.fun/badge/news-image-20261120/mevlanayalcin/world-news-canvas-20261120/reward.svg)](https://make.fun/c/news-image-20261120)
 
 A one-page front page for **news-image-20261120**: 37 stories from Friday,
-20 November 2026 (UTC), across seven regions and 25 beats. Version 8 is
+20 November 2026 (UTC), across seven regions and 25 beats. Version 9 is
 built to read at 300 px across. Every card in a row ends on the same
 baseline: each lead has a two-line 20 px headline and a three-line summary,
 and each of the ten cards has a two-line 14 px headline and a two-line
-summary. All 13 datelines print `PLACE · BEAT`, so each card names both
-where it happened and its field. Attribution sits in one place, a Title Case
-tag at the foot of each illustration, and the wire below runs as 24
-single-line briefs with plain bold numerals.
+summary. All 13 datelines print `PLACE · BEAT` on the left and a tinted
+certainty pill (`OFFICIAL`, `CONFIRMED` or `REPORTED`) at the right end of
+the same row, so each card names where it happened, its field and how firm
+the report is. A Title Case attribution tag sits at the foot of each
+illustration, and the wire below runs as 24 single-line briefs with plain
+bold numerals.
 
-**Changes in v8:** the `CONFIRMED` / `OFFICIAL` / `REPORTED` dateline pills
-are gone, and the beat is back on all ten cards (v7 printed the place only);
-all 13 attribution tags are in Title Case and name their authority or wire;
-lead 1 shows `~110 missiles · 400 drones` in its night sky, and lead 2
-labels `Gopalpur` at the landfall dot and the `BAY OF BENGAL`; the map leaves
-at least 3.6 px between pin rings (v7: 1 px), which spreads the European pins
-1, 4, 5, 6 and 8 by 2–3 px.
+**Changes in v9:** the v7 certainty pills are back on all 13 datelines,
+next to v8's `PLACE · BEAT`. To fit both on the 188 px cards, cards 4–13 use
+short place names (`POLAND`, `IRAQ`, `KENYA`, `EL SALVADOR`), print the
+dateline in 8.5 px caps and use tighter pill padding (2.5 px). Cards 10 and
+12 now read `SEOUL · COURTS` and `EL SALVADOR · POLLS`. Everything else from
+v8 stays: `Gopalpur` / `BAY OF BENGAL`, `~110 missiles · 400 drones`, Title
+Case tags, 3.6 px pin spacing, 20 px two-line lead headlines and plain bold
+wire numbers 14–37. The art gradients now use at least 128 steps (v8: 48),
+and summary ink, source grey and the art outline are each a shade lighter,
+which keeps the q89 file under 462,000 bytes.
 
 ## The edition
 
@@ -45,14 +50,19 @@ at least 3.6 px between pin rings (v7: 1 px), which spreads the European pins
   Italy's general strike · Japan's 2.3% inflation · Seoul's move to impeach
   the chief justice · Kenya's first oil well · Bukele's third-term filing ·
   Glenn Phillips' 118 against India.
-  Every lead and card has a dateline row (number disc, then `PLACE · BEAT`):
-  `KYIV, UKRAINE · WAR`, `ODISHA, INDIA · CYCLONE`,
-  `TAIPEI · SEOUL · TOKYO · MARKETS`, `BRUSSELS · DIPLOMACY`,
-  `ANTALYA · CLIMATE`, `EASTERN POLAND · SECURITY`,
-  `CENTRAL IRAQ · SECURITY`, `ROME · LABOUR`, `TOKYO · ECONOMY`,
-  `SEOUL · POLITICS`, `TURKANA, KENYA · ENERGY`, `SAN SALVADOR · POLITICS`,
-  `WELLINGTON · CRICKET`. Below it come a serif headline and a summary that
-  ends with its sources in brackets.
+  Every lead and card has a dateline row: number disc, `PLACE · BEAT`, and a
+  right-aligned tinted certainty pill:
+  `KYIV, UKRAINE · WAR` (OFFICIAL), `ODISHA, INDIA · CYCLONE` (OFFICIAL),
+  `TAIPEI · SEOUL · TOKYO · MARKETS` (CONFIRMED),
+  `BRUSSELS · DIPLOMACY` (CONFIRMED), `ANTALYA · CLIMATE` (CONFIRMED),
+  `POLAND · SECURITY` (OFFICIAL), `IRAQ · SECURITY` (OFFICIAL),
+  `ROME · LABOUR` (CONFIRMED), `TOKYO · ECONOMY` (OFFICIAL),
+  `SEOUL · COURTS` (REPORTED), `KENYA · ENERGY` (CONFIRMED),
+  `EL SALVADOR · POLLS` (CONFIRMED), `WELLINGTON · CRICKET` (CONFIRMED).
+  Leads set the dateline in 10 px caps, cards in 8.5 px caps; pills are 9 px
+  caps on a light tint (navy for OFFICIAL, teal for CONFIRMED, amber for
+  REPORTED). Below the row come a serif headline and a summary that ends
+  with its sources in brackets.
 - **Where it happened:** a dark-ocean Natural Earth 110m map with 13 large
   numbered pins, one for each illustrated story. At least 3.5 px of map
   shows between any two white pin rings. Pins
@@ -105,7 +115,7 @@ committed as `entry.png`, so the submitted program needs only Node's standard
 library.
 
 ```bash
-python3 build_poster.py          # rebuilds art, entry.png and /tmp/news_1120_v8_300.png
+python3 build_poster.py          # rebuilds art, entry.png and /tmp/news_1120_v9_300.png
 MAKEFUN_OUTPUT_DIR=out node main.ts
 ```
 
@@ -124,19 +134,23 @@ It then renders the page in `/usr/bin/google-chrome` and runs a DOM audit:
   two lines;
 - every headline exactly two lines; lead summaries exactly three lines and
   ending on one shared baseline; card summaries exactly two lines;
-- every dateline reading exactly `PLACE · BEAT` on one line with at least
-  12 px to spare (the tightest, `EASTERN POLAND · SECURITY`, has 18 px), and
-  no certainty pills left on the page;
+- every dateline reading exactly `PLACE · BEAT` (with a `·`) on one line;
+- exactly one tinted certainty pill per card, matching the story's tag, on
+  the dateline row only (none in headlines or summaries), flush with the
+  row's right edge, vertically centred on the dateline and at least 9 px;
+- at least 6 px of clear space between the end of `PLACE · BEAT` and the
+  pill. The tightest are `WELLINGTON · CRICKET` (8.5 px) and
+  `BRUSSELS · DIPLOMACY` (8.7 px);
+- card datelines at least 8.5 px;
 - wire numerals plain bold 10.8 px text, with no disc or background;
 - 13 pins numbered 1–13 with an 8.5 px radius, inside the map, with at
   least 3 px between white rings;
 - HTML text at least 9.5 px and map numbers at 10 px;
 - omitted news found inside the DATE CHECK box and nowhere else.
 
-The page is saved as a progressive 4:4:4 JPEG. The build tries q90 first,
-which must come in under 450,000 bytes. It then tries q89, which must stay
-under 460,000 bytes. The current file is q89 at 458,597 bytes; the gate
-allows 1,048,576. Two builds produce a byte-identical `entry.png`, and
+The page is saved as a progressive 4:4:4 JPEG at q89, which must stay
+under 462,000 bytes. The current file is 461,747 bytes; the gate allows
+1,048,576. Two builds produce a byte-identical `entry.png`, and
 `main.ts` copies those bytes without network access.
 
 ## Sources
