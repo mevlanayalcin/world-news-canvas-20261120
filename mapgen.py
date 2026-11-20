@@ -1,7 +1,7 @@
-"""Locator map for the v5 front page: Natural Earth 110m land, Miller projection.
+"""Locator map for the v6 front page: Natural Earth 110m land, Miller projection.
 
 Dark ocean, cream land. The map is emitted as an inline SVG at its printed
-size (300 px wide, height set by the projection), so pins
+size (294 px wide, height set by the projection), so pins
 and numbers are vector-sharp on the page. Pins that would overlap are pushed
 apart by a fixed, deterministic relaxation and tied back with a leader line.
 """
@@ -14,11 +14,11 @@ from pathlib import Path
 BASE = Path(__file__).resolve().parent
 ASSETS = BASE / "assets"
 
-W = 300
-LON0, LON1 = -126.0, 180.0
-LAT_TOP, LAT_BOT = 64.0, -47.0
-PIN_R = 6.2
-MIN_GAP = 13.0  # centre-to-centre distance between pins, px
+W = 294
+LON0, LON1 = -116.0, 179.0
+LAT_TOP, LAT_BOT = 72.0, -55.0
+PIN_R = 8.5
+MIN_GAP = 2 * PIN_R + 2.5  # centre-to-centre distance between pins, px
 
 REGION_COLORS = {
     "ASIA-PACIFIC": "#9A1B1F",
@@ -102,10 +102,7 @@ def land_path() -> str:
 def svg(pins) -> str:
     placed = layout(pins)
     grid = []
-    for lon in range(-90, 180, 30):
-        x, _ = project(lon, 0)
-        grid.append(f'<line x1="{x:.1f}" y1="0" x2="{x:.1f}" y2="{H}"/>')
-    for lat in (-30, 0, 30, 60):
+    for lat in (0,):  # equator only: a quiet ocean keeps the pins legible
         _, y = project(0, lat)
         grid.append(f'<line x1="0" y1="{y:.1f}" x2="{W}" y2="{y:.1f}"/>')
     leaders, dots, marks = [], [], []
@@ -113,19 +110,19 @@ def svg(pins) -> str:
         col = REGION_COLORS[region]
         if math.hypot(px - tx, py - ty) > PIN_R * 0.6:
             leaders.append(f'<line x1="{tx:.1f}" y1="{ty:.1f}" x2="{px:.1f}" y2="{py:.1f}"/>')
-            dots.append(f'<circle cx="{tx:.1f}" cy="{ty:.1f}" r="1.7" fill="#F2B83C" stroke="#121822" stroke-width="0.6"/>')
+            dots.append(f'<circle cx="{tx:.1f}" cy="{ty:.1f}" r="2" fill="#F2B83C" stroke="#121822" stroke-width="0.6"/>')
         marks.append(
             f'<g class="pin" data-pin="{n}"><circle cx="{px:.1f}" cy="{py:.1f}" r="{PIN_R}" fill="{col}"/>'
-            f'<text x="{px:.1f}" y="{py + 3.1:.1f}">{n}</text></g>'
+            f'<text x="{px:.1f}" y="{py + 3.6:.1f}">{n}</text></g>'
         )
     return f'''<svg class="mapsvg" xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}">
 <rect width="{W}" height="{H}" fill="#1E2B3B"/>
 <g stroke="#2E4056" stroke-width="0.8">{''.join(grid)}</g>
-<path d="{land_path()}" fill="#E6DBC0" stroke="#F7F3E9" stroke-width="0.5"/>
-<g stroke="#F2B83C" stroke-width="0.9">{''.join(leaders)}</g>
+<path d="{land_path()}" fill="#E6DBC0"/>
+<g stroke="#F2B83C" stroke-width="1.1">{''.join(leaders)}</g>
 {''.join(dots)}
-<g font-family="LatoX" font-weight="900" font-size="9" fill="#FFFFFF" text-anchor="middle" stroke="none">
-<g stroke="#FFFFFF" stroke-width="1.3">{''.join(m.replace('<text', '<text stroke="none"') for m in marks)}</g>
+<g font-family="LatoX" font-weight="900" font-size="10" fill="#FFFFFF" text-anchor="middle" stroke="none">
+<g stroke="#FFFFFF" stroke-width="1.5">{''.join(m.replace('<text', '<text stroke="none"') for m in marks)}</g>
 </g>
 </svg>'''
 
