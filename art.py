@@ -1,4 +1,4 @@
-"""Editorial illustrations for the Friday 20 November 2026 front page (v3).
+"""Editorial illustrations for the Friday 20 November 2026 front page (v4).
 
 Every picture is drawn from scratch with Pillow at twice its printed size and
 reduced with Lanczos, so edges are supersampled. Coordinates are written as
@@ -10,7 +10,7 @@ from __future__ import annotations
 import math
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 BASE = Path(__file__).resolve().parent
 ASSETS = BASE / "assets"
@@ -129,12 +129,15 @@ class Art:
             x0, y0 = X, Y
         else:  # tr
             x0, y0 = X - w, Y
-        self.d.rounded_rectangle([x0, y0, x0 + w, y0 + h], radius=h * 0.18, fill=bg)
+        # 1 printed px ink keyline so every badge separates cleanly from the art
+        self.d.rounded_rectangle([x0, y0, x0 + w, y0 + h], radius=h * 0.18, fill=bg,
+                                 outline=INK, width=2)
         self.d.text((x0 + pad_x - bb[0], y0 + pad_y - bb[1]), s, font=f, fill=fg)
         LABELS.append((self.name, s, (x0, y0, x0 + w, y0 + h), (self.W, self.H), round(th / 2)))
 
     def save(self):
         out = self.im.resize(self.size, Image.LANCZOS)
+        out = out.filter(ImageFilter.UnsharpMask(radius=0.6, percent=55, threshold=2))
         ASSETS.mkdir(exist_ok=True)
         out.save(ASSETS / self.name, format="PNG", optimize=True)
 
@@ -231,8 +234,8 @@ def art_kyiv():
     a.circle(bx, by, 0.075, fill=GOLD, outline=CRIMSON, width=2)
     a.circle(bx, by, 0.03, fill=WHITE, outline=None)
     a.circle(0.66, 0.53, 0.04, fill=GOLD, outline=ORANGE, width=1.5)
-    a.tag("KYIV  ·  3 BRIDGES HIT", 0.025, 0.95, 13, WHITE, CRIMSON)
-    a.tag("DNIPRO RIVER", 0.975, 0.05, 10, INK, (242, 226, 196), anchor="tr")
+    a.tag("KYIV  ·  3 BRIDGES HIT", 0.025, 0.95, 14, WHITE, CRIMSON)
+    a.tag("DNIPRO RIVER", 0.975, 0.05, 10.5, INK, (242, 226, 196), anchor="tr")
     a.save()
 
 
@@ -268,9 +271,9 @@ def art_akvan():
         person(a, x, 0.74, 0.13 - i * 0.01)
     # rain bands
     raindrops(a, 0.02, 0.9, 26, (200, 228, 238), seed=3)
-    a.tag("GOPALPUR", 0.03, 0.14, 10, WHITE, NAVY, anchor="tl")
-    a.tag("CYCLONE AKVAN  ·  ODISHA", 0.025, 0.95, 13, WHITE, CRIMSON)
-    a.tag("372,000 EVACUATED", 0.975, 0.05, 10, INK, GOLD, anchor="tr")
+    a.tag("GOPALPUR", 0.03, 0.14, 10.5, WHITE, NAVY, anchor="tl")
+    a.tag("CYCLONE AKVAN  ·  ODISHA", 0.025, 0.95, 14, WHITE, CRIMSON)
+    a.tag("372,000 EVACUATED", 0.975, 0.05, 10.5, INK, GOLD, anchor="tr")
     a.save()
 
 
@@ -309,9 +312,9 @@ def art_chips():
         col = (226, 56, 56) if down else (60, 190, 120)
         a.line([(x, hi), (x, lo)], col, 1.4)
         a.rect(x - 0.018, min(o, c), x + 0.018, max(o, c), fill=col, outline=None)
-    a.tag("TAIEX −6.23%", 0.975, 0.05, 11, WHITE, (200, 34, 40), anchor="tr")
-    a.tag("KOSPI −5.2%  ·  NIKKEI −5.1%", 0.555, 0.95, 9, INK, GOLD)
-    a.tag("ASIA  ·  AI & CHIP ROUT", 0.025, 0.95, 13, WHITE, CRIMSON)
+    a.tag("TAIEX −6.23%", 0.975, 0.05, 12, WHITE, (200, 34, 40), anchor="tr")
+    a.tag("KOSPI −5.2%  ·  NIKKEI −5.1%", 0.025, 0.05, 10, INK, GOLD, anchor="tl")
+    a.tag("ASIA  ·  AI & CHIP ROUT", 0.025, 0.95, 14, WHITE, CRIMSON)
     a.save()
 
 
@@ -334,8 +337,8 @@ def art_euuk():
     person(a, 0.6, 0.74, 0.4, fill=(36, 44, 60))
     a.line([(0.42, 0.55), (0.5, 0.59), (0.58, 0.55)], (36, 44, 60), 4)
     a.circle(0.5, 0.59, 0.045, fill=(232, 196, 160), outline=INK, width=1)
-    a.tag("UK–EU  ·  3 DEALS", 0.03, 0.95, 10, WHITE, NAVY)
-    a.tag("100K / YR", 0.97, 0.47, 9, INK, GOLD, anchor="tr")
+    a.tag("UK–EU  ·  3 DEALS", 0.03, 0.95, 10.5, WHITE, NAVY)
+    a.tag("100K / YR", 0.97, 0.47, 9.5, INK, GOLD, anchor="tr")
     a.save()
 
 # ---- G2. COP31 -------------------------------------------------------------
@@ -357,7 +360,7 @@ def art_cop31():
     a.rect(0.57, 0.33, 0.91, 0.45, fill=(255, 236, 236), outline=None)
     a.text(0.74, 0.39, "FOSSIL FUELS", 9, CRIMSON)
     a.line([(0.57, 0.39), (0.91, 0.39)], CRIMSON, 1.6)
-    a.tag("COP31  ·  ANTALYA", 0.03, 0.95, 10, WHITE, NAVY)
+    a.tag("COP31  ·  ANTALYA", 0.03, 0.95, 10.5, WHITE, NAVY)
     a.save()
 
 
@@ -391,7 +394,7 @@ def art_italy():
     for x in (0.52, 0.72, 0.9):
         a.line([(x, 0.8), (x, 0.56)], INK, 1.2)
         a.poly([(x, 0.56), (x + 0.08, 0.6), (x, 0.65)], fill=RED, outline=None)
-    a.tag("ITALY  ·  24H STRIKE", 0.03, 0.27, 10, WHITE, CRIMSON)
+    a.tag("ITALY  ·  24H STRIKE", 0.03, 0.27, 10.5, WHITE, CRIMSON)
     a.save()
 
 
@@ -404,7 +407,7 @@ def art_trump():
         a.rect(k * 0.1, 0, k * 0.1 + 0.05, 1, fill=(44, 64, 108), outline=None)
     a.d.ellipse(a.box(0.3, 0.04, 0.7, 0.36), fill=(226, 232, 242), outline=INK, width=a.lw(1.2))
     a.d.ellipse(a.box(0.34, 0.08, 0.66, 0.32), fill=None, outline=(36, 54, 94), width=a.lw(1.2))
-    a.text(0.5, 0.2, "WHITE HOUSE", 8, NAVY)
+    a.text(0.5, 0.2, "WHITE HOUSE", 9, NAVY)
     # US flags either side (generic stripes)
     for x0 in (0.04, 0.8):
         a.line([(x0, 0.08), (x0, 0.98)], (200, 170, 90), 1.6)
@@ -420,7 +423,7 @@ def art_trump():
     a.circle(0.5, 0.78, 0.07, fill=GOLD, outline=INK, width=1)
     a.line([(0.47, 0.62), (0.45, 0.5)], INK, 1.2)
     a.line([(0.53, 0.62), (0.55, 0.5)], INK, 1.2)
-    a.tag("PRESSER  ·  IRAN", 0.03, 0.95, 10, WHITE, CRIMSON)
+    a.tag("PRESSER  ·  IRAN", 0.03, 0.95, 10.5, WHITE, CRIMSON)
     a.save()
 
 
@@ -444,7 +447,7 @@ def art_un():
         y = 0.12 + (i % 2) * 0.1
         a.rect(x, y, x + 0.06, y + 0.17, fill=col, outline=INK, width=1)
     a.text(0.72, 0.62, "9TH POLL", 9, NAVY)
-    a.tag("UN  ·  NEXT CHIEF", 0.03, 0.95, 10, WHITE, NAVY)
+    a.tag("UN  ·  NEXT CHIEF", 0.03, 0.95, 10.5, WHITE, NAVY)
     a.save()
 
 
@@ -469,7 +472,7 @@ def art_riyadh():
     # drones (small deltas)
     for x, y in ((0.62, 0.1), (0.7, 0.28), (0.18, 0.34)):
         a.poly([(x - 0.03, y), (x + 0.03, y), (x, y + 0.06)], fill=INK, outline=None)
-    a.tag("RIYADH  ·  INTERCEPTS", 0.03, 0.95, 10, WHITE, CRIMSON)
+    a.tag("RIYADH  ·  INTERCEPTS", 0.03, 0.95, 10.5, WHITE, CRIMSON)
     a.save()
 
 
@@ -495,7 +498,7 @@ def art_florida():
     a.poly([(0.56, 0.86), (0.84, 0.86), (0.8, 0.94), (0.6, 0.94)], fill=CRIMSON, outline=INK, width=1.2)
     a.circle(0.87, 0.8, 0.07, fill=None, outline=INK, width=1.3)
     person(a, 0.66, 0.86, 0.14, fill=(250, 200, 60))
-    a.tag("FLORIDA  ·  FLOODS", 0.03, 0.95, 10, WHITE, NAVY)
+    a.tag("FLORIDA  ·  FLOODS", 0.03, 0.95, 10.5, WHITE, NAVY)
     a.save()
 
 
@@ -521,7 +524,7 @@ def art_china_aus():
     a.rrect(0.26, 0.58, 0.48, 0.7, r=6, fill=(232, 196, 160), outline=INK, width=1.2)
     a.rrect(0.52, 0.58, 0.74, 0.7, r=6, fill=(214, 172, 132), outline=INK, width=1.2)
     a.circle(0.5, 0.64, 0.09, fill=GOLD, outline=INK, width=1.2)
-    a.tag("XI–ALBANESE", 0.03, 0.95, 10, WHITE, NAVY)
+    a.tag("XI–ALBANESE", 0.03, 0.95, 10.5, WHITE, NAVY)
     a.save()
 
 
@@ -544,7 +547,7 @@ def art_dakar():
     a.rect(0.04, 0.7, 0.28, 0.73, fill=GOLD, outline=None)
     for k in range(3):
         a.line([(0.04 + k * 0.08, 0.9), (0.1 + k * 0.08, 0.9)], (170, 214, 230), 1.2)
-    a.tag("DAKAR  ·  ROADMAP", 0.03, 0.27, 10, WHITE, (46, 125, 80))
+    a.tag("DAKAR  ·  ROADMAP", 0.03, 0.27, 10.5, WHITE, (46, 125, 80))
     a.save()
 
 
@@ -570,7 +573,7 @@ def art_bepi():
     a.rect(0.84, 0.16, 0.9, 0.3, fill=(230, 200, 120), outline=INK, width=1)
     a.rect(0.9, 0.2, 0.99, 0.26, fill=(60, 90, 170), outline=(200, 210, 230), width=0.8)
     a.rect(0.75, 0.2, 0.84, 0.26, fill=(60, 90, 170), outline=(200, 210, 230), width=0.8)
-    a.tag("MERCURY  ·  SAT 21 NOV", 0.03, 0.95, 10, WHITE, (74, 85, 99))
+    a.tag("MERCURY  ·  SAT 21 NOV", 0.03, 0.95, 10.5, WHITE, (74, 85, 99))
     a.save()
 
 

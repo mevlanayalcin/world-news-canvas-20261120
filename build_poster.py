@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Build the Friday 20 November 2026 world-news front page (v3).
+"""Build the Friday 20 November 2026 world-news front page (v4).
 
 Run:  python3 build_poster.py
 Writes: assets/art_01..13.png, assets/poster.png, entry.png (1024x1024
 baseline 4:4:4 JPEG, the highest quality that fits MAX_BYTES) and
-/tmp/news_1120_v3_300.png (300px proof).
+/tmp/news_1120_v4_300.png (300px proof).
 """
 from __future__ import annotations
 
@@ -24,15 +24,16 @@ import mapgen
 BASE = Path(__file__).resolve().parent
 ASSETS = BASE / "assets"
 CHROME = "/usr/bin/google-chrome"
-BUILD_TMP = Path("/tmp/news_1120_v3_build")
-PROOF_300 = Path("/tmp/news_1120_v3_300.png")
-MAX_BYTES = 420_000   # entry.png budget (420 kB)
-QUALITIES = range(92, 79, -1)
+BUILD_TMP = Path("/tmp/news_1120_v4_build")
+PROOF_300 = Path("/tmp/news_1120_v4_300.png")
+MAX_BYTES = 680_000   # entry.png budget (gate limit is 1,048,576 bytes)
+QUALITIES = range(93, 85, -1)
 
 # ---------------------------------------------------------------------------
 # The edition. Every item happened, or was first reported, on Friday
-# 20 November 2026 (UTC). Items dated Thursday 19 November or earlier are
-# named in DATE CHECK. kind: hero (1-3) · grid (4-13) · brief (14-40).
+# 20 November 2026 (UTC); nothing from an earlier day is printed on the page.
+# kind: hero (1-3) · grid (4-13) · brief (14-36). A brief has a bold
+# headline phrase (h) and a short detail (d).
 # cert: "v" = official / confirmed on the record, "r" = reported or claimed.
 # pin: (lon, lat) or None.
 # ---------------------------------------------------------------------------
@@ -83,7 +84,7 @@ STORIES = [
          summary="100+ water rescues; St Johns at record.",
          art="art_10.png", pin=(-80.7, 28.2)),
     dict(n=11, kind="grid", region="OCEANIA", beat="Diplomacy", cert="v", place="Shenzhen", src="ABC · Guardian",
-         headline="Xi Hails ‘Full Turnaround’ With Australia",
+         headline="Xi: ‘Full Turnaround’ With Australia",
          summary="Praises Albanese at post-APEC talks.",
          art="art_11.png", pin=(114.1, 22.5)),
     dict(n=12, kind="grid", region="AFRICA", beat="Migration", cert="v", place="Dakar", src="IOM · ThisDay",
@@ -96,65 +97,57 @@ STORIES = [
          art="art_13.png", pin=None),
     # --- news wire: Europe --------------------------------------------------
     dict(n=14, kind="brief", region="EUROPE", beat="Conflict", cert="v", place="Warsaw", src="Tusk",
-         text="Poland calls missile incursion ‘intentional provocation’", pin=(21.0, 52.2)),
+         h="Poland: missile incursion", d="an ‘intentional provocation’", pin=(21.0, 52.2)),
     dict(n=15, kind="brief", region="EUROPE", beat="Diplomacy", cert="v", place="Paris", src="Barrot",
-         text="France seeks UN Council meeting after embassies hit in Kyiv", pin=(2.35, 48.85)),
+         h="France seeks UNSC meeting", d="after embassies hit in Kyiv", pin=(2.35, 48.85)),
     dict(n=16, kind="brief", region="EUROPE", beat="Protest", cert="r", place="Berlin", src="organisers",
-         text="Gen Z protests called in 73 German cities", pin=(13.4, 52.5)),
+         h="Gen Z protests called", d="in 73 German cities", pin=(13.4, 52.5)),
     # --- Asia-Pacific -------------------------------------------------------
     dict(n=17, kind="brief", region="ASIA-PACIFIC", beat="Economy", cert="v", place="Tokyo", src="MIC",
-         text="Japan’s core inflation rises to 2.2% in October", pin=(139.7, 35.7)),
+         h="Japan core inflation rises", d="to 2.2% in October", pin=(139.7, 35.7)),
     dict(n=18, kind="brief", region="ASIA-PACIFIC", beat="Health", cert="v", place="Changwon", src="KDCA",
-         text="S. Korea’s first domestic cholera case in 10 years", pin=(128.7, 35.2)),
+         h="South Korea cholera case", d="first domestic one in 10 years", pin=(128.7, 35.2)),
     dict(n=19, kind="brief", region="ASIA-PACIFIC", beat="Diplomacy", cert="v", place="Shenzhen", src="Xinhua",
-         text="Xi meets Malaysia’s Anwar for fourth bilateral talks", pin=(114.1, 22.5)),
+         h="Xi meets Malaysia’s Anwar", d="for fourth bilateral talks", pin=(114.1, 22.5)),
     dict(n=20, kind="brief", region="ASIA-PACIFIC", beat="Elections", cert="r", place="Taipei", src="Reuters",
-         text="Taiwan flags 2,700 China-linked accounts to Meta", pin=(121.5, 25.0)),
+         h="Taiwan flags 2,700 China-linked", d="accounts to Meta", pin=(121.5, 25.0)),
     dict(n=21, kind="brief", region="ASIA-PACIFIC", beat="Markets", cert="v", place="Singapore", src="SGX",
-         text="STI sheds 2.1% to close at 4,975, below the 5,000 mark", pin=(103.8, 1.35)),
+         h="STI sheds 2.1% to 4,975", d="closing below 5,000", pin=(103.8, 1.35)),
     # --- Americas -----------------------------------------------------------
     dict(n=22, kind="brief", region="AMERICAS", beat="Tech", cert="r", place="Washington", src="House report",
-         text="SpaceX’s Cursor may drop Chinese AI models", pin=(-77.0, 38.9)),
+         h="SpaceX’s Cursor may drop", d="Chinese AI models", pin=(-77.0, 38.9)),
     dict(n=23, kind="brief", region="AMERICAS", beat="Markets", cert="v", place="New York", src="Reuters",
-         text="Nasdaq slides over 3% as Anthropic falls toward IPO price", pin=(-74.0, 40.7)),
-    dict(n=24, kind="brief", region="AMERICAS", beat="Economy", cert="v", place="São Paulo", src="Rio Times",
-         text="B3 exchange shut for Black Consciousness Day holiday", pin=(-46.6, -23.5)),
-    dict(n=25, kind="brief", region="AMERICAS", beat="Indigenous", cert="r", place="Brazil", src="video",
-         text="About 20 isolated Awá people approach a government team", pin=(-46.0, -4.0)),
-    dict(n=26, kind="brief", region="AMERICAS", beat="Trade", cert="r", place="Ottawa", src="Global News",
-         text="‘Multiple issues’ open in Canada–US trade talks", pin=(-75.7, 45.4)),
+         h="Nasdaq slides over 3%", d="as Anthropic nears IPO price", pin=(-74.0, 40.7)),
     # --- Middle East --------------------------------------------------------
-    dict(n=27, kind="brief", region="MIDDLE EAST", beat="Security", cert="v", place="Jurf al-Sakhar", src="officials",
-         text="Iraqi forces enter Kataib Hezbollah stronghold", pin=(44.2, 32.9)),
-    dict(n=28, kind="brief", region="MIDDLE EAST", beat="Shipping", cert="r", place="Gulf", src="Al Jazeera",
-         text="US memo warned Iran blockade lifts war-risk premiums", pin=(56.3, 26.6)),
-    dict(n=29, kind="brief", region="MIDDLE EAST", beat="Politics", cert="v", place="Tel Aviv", src="ToI",
-         text="Eisenkot vows ‘emergency’ government if broad coalition fails", pin=(34.8, 32.1)),
+    dict(n=24, kind="brief", region="MIDDLE EAST", beat="Security", cert="v", place="Jurf al-Sakhar", src="officials",
+         h="Iraqi forces enter", d="Kataib Hezbollah stronghold", pin=(44.2, 32.9)),
+    dict(n=25, kind="brief", region="MIDDLE EAST", beat="Shipping", cert="r", place="Gulf", src="Al Jazeera",
+         h="US memo: Iran blockade", d="lifts war-risk premiums", pin=(56.3, 26.6)),
+    dict(n=26, kind="brief", region="MIDDLE EAST", beat="Politics", cert="v", place="Tel Aviv", src="ToI",
+         h="Eisenkot vows ‘emergency’ govt", d="if broad coalition fails", pin=(34.8, 32.1)),
     # --- Africa -------------------------------------------------------------
-    dict(n=30, kind="brief", region="AFRICA", beat="Markets", cert="v", place="Johannesburg", src="Reuters",
-         text="Rand touches one-year low on coalition jitters", pin=(28.0, -26.2)),
-    dict(n=31, kind="brief", region="AFRICA", beat="Economy", cert="v", place="Abidjan", src="AfDB",
-         text="22 African states in or at high risk of debt distress", pin=(-4.0, 5.3)),
-    dict(n=32, kind="brief", region="AFRICA", beat="Sport", cert="v", place="Doha", src="Africanews",
-         text="Morocco, Senegal, Mali play Friday U-17 World Cup games", pin=(51.5, 25.3)),
-    dict(n=33, kind="brief", region="AFRICA", beat="Conflict", cert="r", place="Tigray", src="Fana",
-         text="200+ Tigrayan fighters surrender to Ethiopian army", pin=(38.5, 14.0)),
-    dict(n=34, kind="brief", region="AFRICA", beat="Migration", cert="r", place="Moyale", src="People Daily",
-         text="Ethiopia unrest drives 50,000 into Kenya, report says", pin=(39.05, 3.5)),
+    dict(n=27, kind="brief", region="AFRICA", beat="Markets", cert="v", place="Johannesburg", src="Reuters",
+         h="Rand touches one-year low", d="on coalition jitters", pin=(28.0, -26.2)),
+    dict(n=28, kind="brief", region="AFRICA", beat="Economy", cert="v", place="Abidjan", src="AfDB",
+         h="22 African states", d="in or at high risk of debt distress", pin=(-4.0, 5.3)),
+    dict(n=29, kind="brief", region="AFRICA", beat="Sport", cert="v", place="Doha", src="Africanews",
+         h="U-17 World Cup:", d="Morocco, Senegal, Mali play", pin=(51.5, 25.3)),
+    dict(n=30, kind="brief", region="AFRICA", beat="Conflict", cert="r", place="Tigray", src="Fana",
+         h="200+ Tigrayan fighters", d="surrender to Ethiopian army", pin=(38.5, 14.0)),
+    dict(n=31, kind="brief", region="AFRICA", beat="Migration", cert="r", place="Moyale", src="People Daily",
+         h="50,000 flee into Kenya", d="from Ethiopia unrest, report says", pin=(39.05, 3.5)),
     # --- Oceania ------------------------------------------------------------
-    dict(n=35, kind="brief", region="OCEANIA", beat="Business", cert="v", place="Sydney", src="receivers",
-         text="David Jones gives 1,689 staff redundancy notices", pin=(151.2, -33.9)),
-    dict(n=36, kind="brief", region="OCEANIA", beat="Travel", cert="v", place="Adelaide", src="ABF",
-         text="Digital arrival declaration pilot expands to Adelaide", pin=(138.6, -34.9)),
-    dict(n=37, kind="brief", region="OCEANIA", beat="Travel", cert="v", place="Sydney", src="Trip.com",
-         text="Trip.Best launches 2027 rankings, adding Oceania", pin=(151.2, -33.9)),
-    dict(n=38, kind="brief", region="OCEANIA", beat="Crime", cert="v", place="Canberra", src="AFP",
-         text="Joint AFP probe nets 660kg of cocaine, 5 arrests in Brazil", pin=(149.1, -35.3)),
-    dict(n=39, kind="brief", region="OCEANIA", beat="Sport", cert="v", place="Wellington", src="RNZ",
-         text="Nicholls 175 not out as NZ make 368 v India", pin=(174.8, -41.3)),
+    dict(n=32, kind="brief", region="OCEANIA", beat="Business", cert="v", place="Sydney", src="receivers",
+         h="David Jones: 1,689 notices", d="staff given redundancy", pin=(151.2, -33.9)),
+    dict(n=33, kind="brief", region="OCEANIA", beat="Travel", cert="v", place="Adelaide", src="ABF",
+         h="Digital arrival declaration", d="pilot expands to Adelaide", pin=(138.6, -34.9)),
+    dict(n=34, kind="brief", region="OCEANIA", beat="Crime", cert="v", place="Canberra", src="AFP",
+         h="AFP probe nets 660kg cocaine", d="5 arrests in Brazil", pin=(149.1, -35.3)),
+    dict(n=35, kind="brief", region="OCEANIA", beat="Sport", cert="v", place="Wellington", src="RNZ",
+         h="Nicholls 175 not out", d="as NZ make 368 v India", pin=(174.8, -41.3)),
     # --- Global / science ---------------------------------------------------
-    dict(n=40, kind="brief", region="GLOBAL/SCIENCE", beat="Wildlife", cert="v", place="Amazon", src="WCS",
-         text="25 years of camera traps show how rare the bush dog is", pin=(-68.0, -8.0)),
+    dict(n=36, kind="brief", region="GLOBAL/SCIENCE", beat="Wildlife", cert="v", place="Amazon", src="WCS",
+         h="Bush dog proves rare", d="in 25 years of camera traps", pin=(-68.0, -8.0)),
 ]
 
 REGION_ORDER = ["EUROPE", "ASIA-PACIFIC", "AMERICAS", "MIDDLE EAST", "AFRICA", "OCEANIA", "GLOBAL/SCIENCE"]
@@ -186,12 +179,8 @@ TIMELINE = [
     ("Sat", "BepiColombo capture"),
 ]
 
-DATE_LINE_1 = ("Every story here happened, or was first reported, on Friday 20 November 2026 (UTC); "
-               "official and disputed figures are attributed.  ● confirmed / on the record   ◐ reported / claimed")
-DATE_LINE_2 = ("Left out as Thursday 19 Nov news: Trump–Xi–Putin declaration · ICJ Myanmar genocide ruling · "
-               "Pentagon $48.3bn Iran tally · Canada budget vote · DOJ Alaska suit · IEA $40bn pipeline report")
-DATE_LINE_3 = ("Also dropped as earlier news: Brazil’s $1bn FX sale (19 Nov) · Jepchirchir ban (19 Nov) · "
-               "Italy’s €805m Meta fine (14 Nov) · Colombia hippo cull (18 Nov) · Pope Leo’s Peru farewell (16 Nov)")
+COLOPHON = ("Every story occurred or was first reported on Friday, 20 November 2026 (UTC) · "
+            "7 regions · {beats} beats · figures attributed to named sources")
 
 
 def b64(path: Path) -> str:
@@ -224,7 +213,7 @@ def card_html(s: dict) -> str:
 def brief_html(s: dict) -> str:
     return f'''
       <div class="brief" data-story="{s['n']}" data-region="{esc(s['region'])}">
-        {badge(s, 'bnum')}<p class="btext"><span class="bt"><b>{esc(s['place'])}</b> {esc(s['text'])} <i>{esc(s['src'])}</i>&nbsp;{cert(s)}</span></p>
+        {badge(s, 'bnum')}<p class="btext"><span class="bt"><b>{esc(s['place'])}</b> <strong>{esc(s['h'])}</strong> {esc(s['d'])} <i>{esc(s['src'])}</i>&nbsp;{cert(s)}</span></p>
       </div>'''
 
 
@@ -285,34 +274,34 @@ body {{ font-family:'LatoX', sans-serif; color:#141923; -webkit-font-smoothing:a
 .grid .place {{ letter-spacing:0; }}
 .ct {{ display:inline-block; flex:0 0 auto; width:7px; height:7px; border-radius:50%; background:#1D6F6A; border:1.3px solid #1D6F6A; vertical-align:0; }}
 .ct-r {{ background:linear-gradient(90deg, #A85F12 50%, #FFFDF7 50%); border-color:#A85F12; }}
-h2 {{ margin:3px 0 0 0; font:700 21px/1.04 'LibSerif'; letter-spacing:-.01em; text-wrap:balance; }}
-.grid h2 {{ margin-top:2px; font-size:15.5px; line-height:1.03; letter-spacing:-.005em; }}
+h2 {{ margin:3px 0 0 0; font:700 21.5px/1.04 'LibSerif'; color:#0E121A; letter-spacing:-.01em; text-wrap:balance; }}
+.grid h2 {{ margin-top:2px; font-size:16px; line-height:1.0; letter-spacing:-.005em; }}
 .summary {{ margin:3px 0 0 0; font:400 11.5px/1.25 'LatoX'; color:#222831; }}
 .grid .summary {{ margin-top:2px; font-size:10.5px; line-height:1.22; white-space:nowrap; }}
-.bottom {{ display:flex; gap:14px; height:252px; margin-top:6px; }}
+.bottom {{ display:flex; gap:14px; height:278px; margin-top:6px; }}
 .mapcol {{ flex:0 0 300px; width:300px; }}
 .secthead {{ height:16px; display:flex; justify-content:space-between; align-items:flex-end; font:900 10.5px/1 'LatoX'; letter-spacing:.1em; text-transform:uppercase; border-bottom:1.5px solid #141923; padding-bottom:3px; white-space:nowrap; }}
 .secthead span {{ color:#9A1B1F; letter-spacing:.05em; }}
 .mapbox {{ margin-top:2px; width:300px; height:{mapgen.H}px; outline:1px solid #141923; outline-offset:-1px; overflow:hidden; }}
 .mapsvg {{ display:block; }}
-.tlhead {{ margin-top:9px; }}
-.timeline {{ display:grid; grid-template-columns:1fr 1fr; grid-template-rows:repeat(4, 17px); grid-auto-flow:column; column-gap:10px; margin-top:3px; }}
-.tli {{ height:17px; display:flex; gap:5px; align-items:center; white-space:nowrap; overflow:hidden; border-bottom:1px dotted #BFB49C; }}
-.tli b {{ flex:0 0 34px; font:900 10px/14px 'LatoX'; color:#9A1B1F; }}
+.tlhead {{ margin-top:12px; }}
+.timeline {{ display:grid; grid-template-columns:1fr 1fr; grid-template-rows:repeat(4, 21px); grid-auto-flow:column; column-gap:10px; margin-top:3px; }}
+.tli {{ height:21px; display:flex; gap:5px; align-items:center; white-space:nowrap; overflow:hidden; border-bottom:1px dotted #BFB49C; }}
+.tli b {{ flex:0 0 34px; font:900 10.5px/14px 'LatoX'; color:#9A1B1F; }}
 .tli span {{ font:700 10px/14px 'LatoX'; }}
 .briefcol {{ flex:1; min-width:0; }}
 .briefgrid {{ display:flex; gap:12px; margin-top:1px; }}
 .bcol {{ flex:1; min-width:0; }}
-.brief {{ height:26px; display:flex; align-items:flex-start; gap:5px; padding-top:1px; border-bottom:1px solid #D6CCB6; }}
+.brief {{ height:32.5px; display:flex; align-items:center; gap:5px; border-bottom:1px solid #CFC3A9; }}
 .bcol .brief:last-child {{ border-bottom:none; }}
-.bnum {{ flex:0 0 16px; width:16px; height:16px; border-radius:50%; color:#FFF; font:900 9.5px/16px 'LatoX'; text-align:center; margin-top:3px; }}
-.btext {{ margin:0; font:700 10.5px/11.5px 'LatoX'; letter-spacing:-.005em; }}
-.btext b {{ color:#9A1B1F; text-transform:uppercase; font:900 10px/11.5px 'LatoX'; letter-spacing:.03em; margin-right:1px; }}
-.btext i {{ font:italic 400 10px/11.5px 'LatoX'; color:#5B4A3A; }}
+.bnum {{ flex:0 0 17px; width:17px; height:17px; border-radius:50%; color:#FFF; font:900 10px/17px 'LatoX'; text-align:center; }}
+.btext {{ margin:0; font:400 10.6px/13px 'LatoX'; color:#1E242E; letter-spacing:-.005em; }}
+.btext b {{ color:#9A1B1F; text-transform:uppercase; font:900 10.4px/13px 'LatoX'; letter-spacing:.03em; margin-right:1px; }}
+.btext strong {{ color:#0E121A; font:900 10.8px/13px 'LatoX'; }}
+.btext i {{ font:italic 400 10.4px/13px 'LatoX'; color:#5B4A3A; }}
 .btext .ct {{ vertical-align:0; }}
-.datecheck {{ margin-top:7px; height:45px; border:2px solid #9A1B1F; background:#EFE8D8; padding:2px 8px 0 8px; overflow:hidden; }}
-.dc {{ font:700 10px/13px 'LatoX'; white-space:nowrap; }}
-.dc.two {{ font-weight:400; }}
+.datecheck {{ margin-top:6px; height:19px; border:1.5px solid #9A1B1F; background:#EFE8D8; padding:0 6px; overflow:hidden; }}
+.dc {{ font:700 10px/16px 'LatoX'; white-space:nowrap; letter-spacing:-.01em; }}
 .dc b {{ color:#9A1B1F; letter-spacing:.06em; }}
 .dc .ct {{ vertical-align:0; margin-left:6px; }}
 </style></head>
@@ -338,9 +327,7 @@ h2 {{ margin:3px 0 0 0; font:700 21px/1.04 'LibSerif'; letter-spacing:-.01em; te
     </div>
   </div>
   <div class="datecheck">
-    <div class="dc"><b>DATE CHECK ✓</b>&nbsp; {esc(DATE_LINE_1).replace('●', '<span class="ct ct-v"></span>').replace('◐', '<span class="ct ct-r"></span>')}</div>
-    <div class="dc two">{esc(DATE_LINE_2)}</div>
-    <div class="dc two">{esc(DATE_LINE_3)}</div>
+    <div class="dc"><b>EDITION SCOPE ✓</b>&nbsp; {esc(COLOPHON.format(beats=len(BEATS)))} · <span class="ct ct-v"></span> Confirmed on the record &nbsp;<span class="ct ct-r"></span> Reported / claimed</div>
   </div>
 </div></body></html>'''
 
@@ -421,7 +408,7 @@ AUDIT_JS = r'''() => {
 }'''
 
 # every stat must be backed by a story's text on the page
-STAT_SOURCES = {"3": 1, "372,000": 2, "−6.23%": 3, "100,000": 4, "9th": 8, "1,689": 35}
+STAT_SOURCES = {"3": 1, "372,000": 2, "−6.23%": 3, "100,000": 4, "9th": 8, "1,689": 32}
 
 
 def check_audit(a: dict) -> list[str]:
@@ -429,6 +416,8 @@ def check_audit(a: dict) -> list[str]:
     n = len(STORIES)
     if a["doc"] != [1024, 1024]:
         f.append(f"doc {a['doc']}")
+    if n != 36 or a["pinCount"] != 35:
+        f.append(f"v4 expects 36 stories / 35 pins, got {n} / {a['pinCount']}")
     if sorted(a["stories"]) != list(range(1, n + 1)):
         f.append(f"stories {a['stories']}")
     if sum(a["regionCounts"]) != n or len(a["regionCounts"]) != 7 or min(a["regionCounts"]) < 4:
@@ -446,7 +435,7 @@ def check_audit(a: dict) -> list[str]:
     hero_sum, grid_sum = a["summaryLines"][:3], a["summaryLines"][3:]
     if max(hero_sum) > 2 or max(grid_sum) > 1:
         f.append(f"summary lines {a['summaryLines']}")
-    if a["minHtml"] < 9.5:
+    if a["minHtml"] < 10:
         f.append(f"html font {a['minHtml']} ({a['minHtmlText']})")
     if a["minSvg"] < 9:
         f.append(f"svg font {a['minSvg']}")
@@ -460,13 +449,14 @@ def check_audit(a: dict) -> list[str]:
         f.append(f"stats {a['stats']}")
     for v, sn in STAT_SOURCES.items():
         s = next(x for x in STORIES if x["n"] == sn)
-        body = " ".join(str(s.get(k, "")) for k in ("headline", "summary", "text"))
+        body = " ".join(str(s.get(k, "")) for k in ("headline", "summary", "h", "d"))
         word = {"3": "Three", "9th": "9th"}.get(v, v)
         if word not in body and v not in body:
             f.append(f"stat {v} not backed by story {sn}")
     if not a["kicker"].startswith(f"{n} stories") or f"{len(BEATS)} beats" not in a["kicker"] or len(BEATS) < 14:
         f.append(f"kicker {a['kicker']} beats {len(BEATS)}")
-    for banned in ("Peltola", "162-151", "joint declaration"):
+    for banned in ("Peltola", "162-151", "joint declaration", "DATE CHECK", "Left out", "dropped",
+                   "19 Nov", "18 Nov", "16 Nov", "14 Nov", "Thursday", "ICJ", "Meta fine", "Putin"):
         if banned in a["pageText"]:
             f.append(f"banned text on page: {banned}")
     return f
@@ -513,6 +503,8 @@ def main() -> int:
 
     im = Image.open(ASSETS / "poster.png").convert("RGB")
     data, q = encode_jpeg(im)
+    if not (500 * 1024 <= len(data) <= 680 * 1024 and 91 <= q <= 93):
+        raise SystemExit(f"entry.png outside v4 budget: {len(data)} bytes at q{q}")
     (BASE / "entry.png").write_bytes(data)
     im.resize((300, 300), Image.LANCZOS).save(PROOF_300)
     size = len(data)
