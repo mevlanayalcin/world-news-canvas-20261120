@@ -1,4 +1,4 @@
-"""Editorial illustrations for the Friday 20 November 2026 front page (v7).
+"""Editorial illustrations for the Friday 20 November 2026 front page (v8).
 
 Each picture has two layers:
 
@@ -152,7 +152,7 @@ class Art:
             overlay(self, d)
         if attr:
             if self.lead:
-                self._pill(d, attr.upper(), pad, h - 5, 10.5, WHITE, INK, LATO_BLACK, "bl", "attr")
+                self._pill(d, attr, pad, h - 5, 10.5, WHITE, INK, LATO_BLACK, "bl", "attr")
             else:
                 self._pill(d, attr, w - 4, h - 4, 10, WHITE, INK, LATO_BOLD, "br", "attr")
         ASSETS.mkdir(exist_ok=True)
@@ -166,8 +166,9 @@ class Art:
         bw, bht = tw + 2 * px, th + 2 * py
         x0 = x if anchor in ("tl", "bl") else x - bw
         y0 = y if anchor in ("tl", "tr") else y - bht
-        d.rounded_rectangle([x0, y0, x0 + bw, y0 + bht], radius=3, fill=bg,
-                            outline=outline, width=1)
+        if bg is not None or outline is not None:   # bg=None: bare type, no box
+            d.rounded_rectangle([x0, y0, x0 + bw, y0 + bht], radius=3, fill=bg,
+                                outline=outline, width=1)
         d.text((x0 + px - bb[0], y0 + py - bb[1]), s, font=f, fill=fg)
         LABELS.append(dict(art=self.name, kind=kind, text=s, bbox=(x0, y0, x0 + bw, y0 + bht),
                            size=round(size), img=self.size, lead=self.lead))
@@ -221,6 +222,20 @@ def flagpole(a: Art, x, y_top, y_bot):
     a.line([(x, y_top), (x, y_bot)], INK, 1.6)
 
 
+# ---- printed-size map and scene labels (leads 1 and 2) ---------------------
+def kyiv_labels(a: Art, d: ImageDraw.ImageDraw):
+    """The barrage size, in quiet cream type on the night sky at top right."""
+    a._pill(d, "~110 missiles · 400 drones", a.size[0] - 4, 4, 10.5, (236, 226, 208), None,
+            LATO_BLACK, "tr", "geo")
+
+
+def akvan_labels(a: Art, d: ImageDraw.ImageDraw):
+    """Name the landfall point and the sea so the map reads without its caption."""
+    dx, dy = a.X(0.4) / 2, a.Y(0.36) / 2          # landfall dot at printed size
+    a._pill(d, "Gopalpur", round(dx - 6), round(dy + 7), 10.5, INK, PAPER, LATO_BLACK, "tl", "geo")
+    a._pill(d, "BAY OF BENGAL", a.size[0] - 4, 4, 10, INK, None, LATO_BLACK, "tr", "geo")
+
+
 # ---- 1. Kyiv bridges -------------------------------------------------------
 def art_kyiv():
     a = Art("art_01.png", HERO, (64, 92, 128), HERO_BAND)
@@ -264,7 +279,7 @@ def art_kyiv():
     a.circle(bx, by, 0.03, fill=WHITE, outline=None)
     a.circle(0.68, 0.62, 0.045, fill=GOLD, outline=ORANGE, width=1.5)
     a.circle(0.6, 0.56, 0.035, fill=GOLD, outline=ORANGE, width=1.5)
-    a.finish("KYIV", "3 bridges hit", "Officials’ count")
+    a.finish("KYIV", "3 bridges hit", "Officials’ count", overlay=kyiv_labels)
 
 
 # ---- 2. Cyclone Akvan ------------------------------------------------------
@@ -292,7 +307,7 @@ def art_akvan():
     for i, x in enumerate((0.23, 0.26, 0.29)):
         person(a, x, 0.8, 0.15 - i * 0.012)
     raindrops(a, 0.55, 0.95, 4, (200, 228, 238), seed=3)
-    a.finish("CYCLONE AKVAN", "Landfall · 8 am", "IMD · State")
+    a.finish("CYCLONE AKVAN", "Landfall · 8 am", "Weather office · IMD", overlay=akvan_labels)
 
 
 # ---- 3. Asia AI sell-off ---------------------------------------------------
@@ -342,7 +357,7 @@ def art_chips():
         a.rect(x - 0.008, lo, x + 0.008, hi, fill=col, outline=None)
     a.line(pts, (255, 92, 92), 2.6)
     a.circle(pts[-1][0], pts[-1][1], 0.035, fill=CORAL, outline=WHITE, width=1.2)
-    a.finish("AI SELL-OFF", callout="Asia, Friday’s close", attr="Market close",
+    a.finish("AI SELL-OFF", callout="Asia, Friday’s close", attr="Closing prices",
              overlay=chips_scoreboard)
 
 
@@ -386,7 +401,7 @@ def art_cop31():
     a.line([(0.54, 0.42), (0.86, 0.42)], CRIMSON, 2)
     a.line([(0.6, 0.33), (0.8, 0.51)], CRIMSON, 1.6)
     a.line([(0.6, 0.51), (0.8, 0.33)], CRIMSON, 1.6)
-    a.finish("COP31: NO DEAL", attr="Ongoing · UN")
+    a.finish("COP31: NO DEAL", attr="Ongoing · UN News")
 
 
 # ---- 6. Missile over Poland ------------------------------------------------
@@ -454,7 +469,7 @@ def art_iraq():
         a.circle(x, 0.88, 0.06, fill=INK, outline=None)
     for x in (0.54, 0.6, 0.66, 0.74):
         person(a, x, 0.94, 0.3, fill=(84, 90, 60))
-    a.finish("IRAQ: ARMY IN", attr="Officials")
+    a.finish("IRAQ: ARMY IN", attr="Officials · Reuters")
 
 
 # ---- 8. Italy general strike -----------------------------------------------
@@ -486,7 +501,7 @@ def art_italy():
     for x in (0.1, 0.36, 0.62):
         a.line([(x, 0.8), (x, 0.5)], INK, 1.2)
         a.poly([(x, 0.5), (x + 0.08, 0.55), (x, 0.6)], fill=RED, outline=None)
-    a.finish("ITALY: STRIKE", attr="CGIL · AP")
+    a.finish("ITALY: STRIKE", attr="Reported · AP")
 
 
 # ---- 9. Japan CPI ----------------------------------------------------------
@@ -514,7 +529,7 @@ def art_japan():
     a.line([(0.5, 0.56), (0.66, 0.46), (0.78, 0.4), (0.92, 0.14)], INK, 2.2)
     a.poly([(0.95, 0.06), (0.88, 0.14), (0.95, 0.2)], fill=INK, outline=None)
     a.line([(0.44, 0.96), (0.99, 0.96)], INK, 1.4)
-    a.finish("JAPAN: +2.3%", attr="MIC · JT")
+    a.finish("JAPAN: +2.3%", attr="Official data · MIC")
 
 
 # ---- 10. Seoul: move to impeach the chief justice -------------------------
@@ -542,7 +557,7 @@ def art_seoul():
     # gavel
     a.line([(0.6, 0.98), (0.76, 0.82)], (110, 70, 40), 3)
     a.rrect(0.72, 0.74, 0.84, 0.88, r=3, fill=(130, 84, 48), outline=INK, width=1)
-    a.finish("SEOUL: IMPEACH", attr="DPK · Herald")
+    a.finish("SEOUL: IMPEACH", attr="Party vote · Herald")
 
 
 # ---- 11. Kenya's first oil well -------------------------------------------
@@ -582,7 +597,7 @@ def art_kenya():
         y0 = 0.1 + sum((0.07, 0.015, 0.07, 0.015, 0.07)[:k])
         a.rect(0.28, y0, 0.4, y0 + h, fill=col, outline=None)
     a.rect(0.28, 0.1, 0.4, 0.34, fill=None, outline=INK, width=0.8)
-    a.finish("KENYA: OIL", attr="Spudded · Star")
+    a.finish("KENYA: OIL", attr="Spudded · The Star")
 
 
 # ---- 12. Bukele third-term bid --------------------------------------------

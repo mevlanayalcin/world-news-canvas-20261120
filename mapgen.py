@@ -1,4 +1,4 @@
-"""Locator map for the v6 front page: Natural Earth 110m land, Miller projection.
+"""Locator map for the v8 front page: Natural Earth 110m land, Miller projection.
 
 Dark ocean, cream land. The map is emitted as an inline SVG at its printed
 size (294 px wide, height set by the projection), so pins
@@ -18,7 +18,8 @@ W = 294
 LON0, LON1 = -116.0, 179.0
 LAT_TOP, LAT_BOT = 72.0, -55.0
 PIN_R = 8.5
-MIN_GAP = 2 * PIN_R + 2.5  # centre-to-centre distance between pins, px
+RING = 0.75               # half the 1.5 px white ring stroke, px
+MIN_GAP = 2 * PIN_R + 5.0  # centre-to-centre: 3.5 px of map between white rings (v7: 1 px)
 
 REGION_COLORS = {
     "ASIA-PACIFIC": "#9A1B1F",
@@ -132,8 +133,9 @@ def check(pins):
     for i, a in enumerate(placed):
         for b in placed[i + 1:]:
             d = math.hypot(a[3] - b[3], a[4] - b[4])
-            if d < 2 * PIN_R + 0.4:
-                raise SystemExit(f"map pins {a[0]} and {b[0]} overlap ({d:.1f}px)")
+            gap = d - 2 * (PIN_R + RING)
+            if gap < 3.0:
+                raise SystemExit(f"map pins {a[0]} and {b[0]} have only {gap:.1f}px between rings")
         if not (PIN_R <= a[3] <= W - PIN_R and PIN_R <= a[4] <= H - PIN_R):
             raise SystemExit(f"map pin {a[0]} leaves the frame")
     return placed
