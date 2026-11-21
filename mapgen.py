@@ -15,12 +15,12 @@ from pathlib import Path
 BASE = Path(__file__).resolve().parent
 ASSETS = BASE / "assets"
 
-W = 294
+W = 336
 LON0, LON1 = -128.0, 179.0
-LAT_TOP, LAT_BOT = 75.0, -56.0
-PIN_R = 8.2
-RING = 0.7                 # half the 1.4 px white ring stroke, px
-MIN_GAP = 2 * (PIN_R + RING) + 3.2   # >= 3.2 px clear map between outer white rings
+LAT_TOP, LAT_BOT = 76.0, -56.0
+PIN_R = 8.8
+RING = 0.75                # half the 1.5 px white ring stroke, px
+MIN_GAP = 2 * (PIN_R + RING) + 3.5   # >= 3.5 px clear map between outer white rings
 
 REGION_COLORS = {
     "ASIA-PACIFIC": "#B8292F",
@@ -208,17 +208,17 @@ def svg(pins) -> str:
         marks.append(
             f'<g class="pin" data-pin="{n}" data-x0="{tx:.2f}" data-y0="{ty:.2f}">'
             f'<circle cx="{px:.1f}" cy="{py:.1f}" r="{PIN_R}" fill="{col}"/>'
-            f'<text x="{px:.1f}" y="{py + 3.5:.1f}">{n}</text></g>'
+            f'<text x="{px:.1f}" y="{py + 3.7:.1f}">{n}</text></g>'
         )
     return f'''<svg class="mapsvg" xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}">
 <rect width="{W}" height="{H}" fill="#E6EFF5"/>
 <g stroke="#C7D8E4" stroke-width="0.8">{''.join(grid)}</g>
 <path d="{land_path()}" fill="#D8CBB5" stroke="#BFAF96" stroke-width="0.6" stroke-linejoin="round"/>
-<g stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round">{''.join(leaders)}</g>
-<g stroke="#1E293B" stroke-width="1.3" stroke-linecap="round">{''.join(leaders)}</g>
+<g stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round">{''.join(leaders)}</g>
+<g stroke="#1E293B" stroke-width="1.4" stroke-linecap="round">{''.join(leaders)}</g>
 {''.join(dots)}
-<g font-family="LatoX" font-weight="900" font-size="10" fill="#FFFFFF" text-anchor="middle" stroke="none">
-<g stroke="#FFFFFF" stroke-width="1.4">{''.join(m.replace('<text', '<text stroke="none"') for m in marks)}</g>
+<g font-family="LatoX" font-weight="900" font-size="10.5" fill="#FFFFFF" text-anchor="middle" stroke="none">
+<g stroke="#FFFFFF" stroke-width="1.5">{''.join(m.replace('<text', '<text stroke="none"') for m in marks)}</g>
 </g>
 </svg>'''
 

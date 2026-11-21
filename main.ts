@@ -1,5 +1,5 @@
 /**
- * Deterministic runtime entrypoint for world-news-canvas-20261120 (v17).
+ * Deterministic runtime entrypoint for world-news-canvas-20261120 (v18).
  *
  * The 1024x1024 progressive 4:4:4 JPEG broadsheet for Friday, 20 November 2026
  * is pre-rendered offline by build_poster.py into ./entry.png. At runtime this

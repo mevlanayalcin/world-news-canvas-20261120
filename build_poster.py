@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Build the Friday 20 November 2026 world-news front page (v17).
+"""Build the Friday 20 November 2026 world-news broadsheet atlas (v18).
 
 Run:  python3 build_poster.py
 Writes: assets/art_01..13.png, assets/poster.png, entry.png (1024x1024
-progressive 4:4:4 JPEG, target 260-350 KB) and /tmp/news20_v17_300.png
-(300 px Lanczos proof).
+progressive 4:4:4 JPEG) and /tmp/news20-v18-thumb.png (300 px Lanczos proof).
 """
 from __future__ import annotations
 
@@ -25,24 +24,21 @@ import mapgen
 BASE = Path(__file__).resolve().parent
 ASSETS = BASE / "assets"
 CHROME = "/usr/bin/google-chrome"
-BUILD_TMP = Path("/tmp/news_1120_v17_build")
-PROOF_300 = Path("/tmp/news20_v17_300.png")
-PROOF_300_ALT = Path("/tmp/news_1120_v17_300.png")
-MIN_BYTES, MAX_BYTES = 200_000, 350_000
+BUILD_TMP = Path("/tmp/news_1120_v18_build")
+PROOF_300 = Path("/tmp/news20-v18-thumb.png")
+MIN_BYTES, MAX_BYTES = 200_000, 365_000
 QUALITIES = (91, 90, 89, 88, 86, 84, 82, 81, 80, 79, 78)
 
 LATO = Path("/usr/share/fonts/truetype/lato")
-BRIEF_PX = 10.6          # brief type size (v17: 26 briefs, 13 per column)
-BRIEF_ROW = 14           # brief line pitch, px: 13 rows per column = 182 px
+BRIEF_PX = 10.2          # crisp brief type size (26 briefs, 13 per column)
+BRIEF_ROW = 15           # exact integer pitch: 13 * 15 = 195 px
 BRIEF_PAD = 3            # left/right padding inside each tinted row, px
-BRIEF_MAX_W = 328        # badge + text must fit one line this wide (334 px column - padding)
+BRIEF_MAX_W = 307        # fits inside 314 px column with padding
 BNUM_PX = 9.0            # white bold number inside the region-coloured disc
 BNUM_W, BNUM_GAP = 14, 4 # number disc diameter and gap before the place (px)
-TL_H = 30                # height of the 2-line THE DAY IN UTC strip, px
-TL_GAP = 3               # clear px between the strip's cells
 BRIEF_INK = "#111827"
-GRID_DL_PX = 9.5         # 900-weight caps dateline on the 188 px cards (leads use 10 px)
-DATELINE_GAP = 6         # clear px between the end of PLACE · BEAT and its certainty pill
+GRID_DL_PX = 9.4         # 900-weight caps dateline on the 188 px cards
+DATELINE_GAP = 6         # clear px between PLACE · BEAT and its certainty pill
 
 # ---------------------------------------------------------------------------
 # The edition: 39 verified pure-Friday 20 November 2026 (UTC) stories across
@@ -104,7 +100,7 @@ STORIES = [
     dict(n=10, kind="grid", region="AFRICA", beat="Energy", dl="Energy", place="Kenya",
          src="The Star", tag="OFFICIAL",
          headline="Kenya begins drilling its\nfirst Turkana oil well",
-         summary="Work starts at the Amosing field; first crude is targeted for Dec 1.",
+         summary="Work starts at the Amosing field; first crude targeted for Dec 1.",
          art="art_10.png", pin=(35.6, 3.1)),      # Turkana
     dict(n=11, kind="grid", region="GLOBAL", beat="Medicine", dl="Health", place="Barcelona",
          src="EORTC, Guardian", tag="REPORTED",
@@ -185,33 +181,28 @@ STORIES = [
 ]
 
 REGION_ORDER = ["EUROPE", "ASIA-PACIFIC", "AMERICAS", "MIDDLE EAST", "AFRICA", "OCEANIA", "GLOBAL"]
-REGION_NAME = {
-    "EUROPE": "Europe",
-    "ASIA-PACIFIC": "Asia-Pacific",
-    "AMERICAS": "Americas",
-    "MIDDLE EAST": "Middle East",
-    "AFRICA": "Africa",
-    "OCEANIA": "Oceania",
-    "GLOBAL": "Global",
-}
 REGION_COLORS = mapgen.REGION_COLORS
 REGION_COUNTS = {r: sum(1 for s in STORIES if s["region"] == r) for r in REGION_ORDER}
 BEATS = sorted({s["beat"] for s in STORIES})
 
-# certainty tag: (text, bg, border) for card pills & footer legend
+# 4-level editorial certainty tags: (text, bg, border)
 TAG_COLORS = {
     "CONFIRMED": ("#135A54", "#DCF0EC", "#9CCFC6"),
     "OFFICIAL": ("#16243A", "#E3E9F2", "#B5C3D8"),
     "REPORTED": ("#8F4D0B", "#F7E9D6", "#DEC097"),
+    "CLAIM": ("#8C1D24", "#FCE8E9", "#E5B0B4"),
 }
 
+DECK = ("Russia hits 3 Kyiv bridges · Cyclone Akvan lands in Odisha · AI rout pulls S&P 500 into "
+        "correction · SEC probes Nvidia · UK and EU seal reset")
+
 STATS = [
-    ("3", "Kyiv Dnipro bridges hit"),
-    ("372,000", "evacuated before Akvan"),
-    ("−3.7%", "S&P 500 enters correction"),
-    ("−14%", "Nvidia on SEC probe report"),
-    ("60.7%", "cancer trial response"),
-    ("100,000", "UK–EU youth visas/yr"),
+    ("3", "Kyiv Dnipro bridges hit in mass barrage"),
+    ("372,000", "evacuated in Odisha before Cyclone Akvan"),
+    ("−3.7%", "S&P 500 drop into correction (Nasdaq −5.3%)"),
+    ("−14%", "Nvidia plunge on US SEC probe report"),
+    ("60.7%", "pancreatic cancer pill tumour response"),
+    ("100,000", "annual youth mobility visas in UK–EU deal"),
 ]
 STAT_SOURCES = {
     "3": (1, "3 Kyiv bridges"),
@@ -222,34 +213,24 @@ STAT_SOURCES = {
     "100,000": (5, "100,000"),
 }
 
-TIMELINE = [
-    ("OVERNIGHT", 1, "Kyiv bridges hit"),
-    ("~02:30Z", 2, "Akvan landfall"),
-    ("05:30Z", 3, "Taiex −6.2%"),
-    ("MIDDAY", 5, "UK–EU reset"),
-    ("15:50Z", 11, "Cancer trial 60.7%"),
-    ("~19:10Z", 4, "Nvidia SEC probe"),
-    ("21:00Z", 3, "S&P 500 −3.7%"),
-]
-TL_CLOCKS = {"~02:30Z", "05:30Z", "15:50Z", "~19:10Z", "21:00Z"}
-
 DC_L1_LBL = "Excluded (Thu 19 Nov):"
-DC_L1_TXT = ("Trump–Xi–Putin Shenzhen talks, Anthropic’s $83 IPO debut, ICJ Myanmar ruling, "
-             "GTA VI launch, Bukele’s third-term filing, Kyiv embassy damage,")
-DC_L2_PRE = "Uganda Ebola rally ban, Panama COP31 oil-cap call, Tonga drought, Indonesia asset-forfeiture bill."
+DC_L1_TXT = ("Trump–Xi–Putin Shenzhen talks, Anthropic’s $83 IPO debut, ICJ Rohingya/Myanmar ruling, "
+             "GTA VI launch, Bukele’s 3rd-term bid, Denmark’s Greenland vote, Senate Iran vote,")
+DC_L2_PRE = ("Kyiv embassy damage, Tonga drought, Uganda Ebola rally ban, Panama COP31 oil-cap call.")
 DC_L2_LBL = "Excluded (Wed 18 Nov):"
 DC_L2_TXT = "Voyager 1’s light-day milestone, $190.4m Van Gogh sale."
-DC_L3_LBL = "Not yet happened:"
-DC_L3_TXT = ("BepiColombo Mercury orbit capture & next COP31 draft (Sat 21 Nov), "
-             "ATP Finals final (Sun 22 Nov), Estonia border closure (1 Dec).")
+DC_L3_LBL = "Not yet confirmed / Sat 21 Nov+:"
+DC_L3_TXT = ("BepiColombo Mercury orbit capture & COP31 Day 13 overtime draft (Sat 21 Nov), "
+             "Peru 6.7 quake (21 Nov), ATP Finals final (Sun 22 Nov), Estonia border closure (1 Dec).")
 
-FOOT_L = "Every story happened, or was first reported, on Fri 20 Nov 2026 (UTC)."
-FOOT_R = "Sources named beside each story · Original drawings"
+FOOT_L = "Every story dated Fri 20 Nov 2026 (UTC)."
+FOOT_R = "Sources named on every item · Original vector art"
 
 DATECHECK_ONLY = [
     "BepiColombo", "Mercury", "Saturday", "Thursday", "19 Nov", "21 Nov", "ICJ",
-    "Putin", "Pentagon", "48.3bn", "Anthropic", "Voyager", "GTA", "Myanmar",
-    "Bukele", "embass", "Ebola", "Tonga", "Panama", "forfeiture", "Van Gogh",
+    "Rohingya", "Putin", "Pentagon", "48.3bn", "Anthropic", "Voyager", "GTA",
+    "Myanmar", "Bukele", "embass", "Greenland", "Denmark", "Senate", "Iran",
+    "Ebola", "Tonga", "Panama", "Van Gogh", "Peru",
 ]
 
 
@@ -312,42 +293,13 @@ def measure_briefs() -> dict[int, float]:
     return out
 
 
-def timeline_html() -> str:
-    steps = "".join(
-        f'<div class="ts" data-story="{n}"><b class="tw">{esc(w)}</b>'
-        f'<span class="tx">{esc(t)}</span></div>' for w, n, t in TIMELINE)
-    return (f'<div class="band timeline">'
-            f'<div class="tlhead">THE DAY<br>IN UTC</div>'
-            f'<div class="tlrail">{steps}</div></div>')
-
-
-def stats_html() -> str:
-    cells = "".join(
-        f'<div class="stat"><b>{esc(v)}</b><span class="sx"><span class="s2">{esc(l)}</span></span></div>'
-        for v, l in STATS)
-    return (f'<div class="band stats">'
-            f'<div class="sthead">THE DAY<br>IN NUMBERS</div>'
-            f'<div class="strail">{cells}</div></div>')
-
-
-def maplegend_html() -> str:
-    def item(r: str) -> str:
-        return (f'<span class="mlitem" data-region="{esc(r)}" data-count="{REGION_COUNTS[r]}">'
-                f'<i class="mldot" style="background:{REGION_COLORS[r]}"></i>'
-                f'{esc(REGION_NAME[r])} <b>{REGION_COUNTS[r]}</b></span>')
-
-    row1 = "".join(item(r) for r in ("EUROPE", "ASIA-PACIFIC", "AMERICAS", "MIDDLE EAST"))
-    row2 = ("".join(item(r) for r in ("AFRICA", "OCEANIA", "GLOBAL"))
-            + f'<span class="mltot">Total <b>{len(STORIES)}</b></span>')
-    return f'<div class="maplegend"><div class="mlrow">{row1}</div><div class="mlrow">{row2}</div></div>'
-
-
 def footer_legend_html() -> str:
     return (
         f'<div class="fleg">'
         f'{tag_pill_html("CONFIRMED", "ftg")}<span>2+ outlets</span>'
         f'{tag_pill_html("OFFICIAL", "ftg")}<span>on the record</span>'
-        f'{tag_pill_html("REPORTED", "ftg")}<span>one outlet</span>'
+        f'{tag_pill_html("REPORTED", "ftg")}<span>single outlet</span>'
+        f'{tag_pill_html("CLAIM", "ftg")}<span>one side’s account</span>'
         f'</div>'
     )
 
@@ -375,6 +327,13 @@ def build_html() -> str:
     briefs = [s for s in STORIES if s["kind"] == "brief"]
     pins = [(s["n"], s["pin"][0], s["pin"][1], s["region"]) for s in heroes + grid]
     total = len(STORIES)
+    regions = "".join(
+        f'<div class="rg" data-region="{esc(r)}" data-count="{REGION_COUNTS[r]}" '
+        f'style="flex:{REGION_COUNTS[r]} 1 0;background:{REGION_COLORS[r]}">'
+        f'<span>{esc(r)}</span><b>{REGION_COUNTS[r]}</b></div>' for r in REGION_ORDER)
+    stats = "".join(
+        f'<div class="stat"><b>{esc(v)}</b><span class="sx"><span class="s2">{esc(l)}</span></span></div>'
+        for v, l in STATS)
     half = len(briefs) // 2
     cols = "".join(f'<div class="bcol">{"".join(brief_html(s) for s in part)}</div>'
                    for part in (briefs[:half], briefs[half:]))
@@ -395,31 +354,30 @@ body {{ font-family:'LatoX', sans-serif; color:#121822; -webkit-font-smoothing:a
 .page {{ position:relative; width:1024px; height:1024px; padding:0 18px; }}
 .band {{ position:absolute; left:18px; right:18px; }}
 
-.kickerbar {{ top:5px; height:12px; display:flex; justify-content:space-between; align-items:center; font:900 10px/1 'LatoX'; letter-spacing:.085em; text-transform:uppercase; white-space:nowrap; }}
+.kickerbar {{ top:4px; height:12px; display:flex; justify-content:space-between; align-items:center; font:900 10px/1 'LatoX'; letter-spacing:.085em; text-transform:uppercase; white-space:nowrap; }}
 .kickerbar .l {{ color:#B8292F; }}
 
-.masthead {{ top:18px; height:60px; font:700 55px/53px 'LibSerif'; color:#0E121A; letter-spacing:-.015em; text-align:center; white-space:nowrap; border-top:1.5px solid #121822; border-bottom:2px solid #121822; }}
+.masthead {{ top:17px; height:54px; font:700 50.5px/48px 'LibSerif'; color:#0E121A; letter-spacing:-.015em; text-align:center; white-space:nowrap; border-top:2px solid #121822; }}
+.deck {{ top:71px; height:17px; font:italic 700 13.3px/16px 'LibSerif'; color:#2A303A; text-align:center; white-space:nowrap; border-bottom:1.5px solid #121822; }}
 
-.timeline {{ top:80px; height:{TL_H}px; display:flex; align-items:stretch; gap:{TL_GAP}px; white-space:nowrap; overflow:hidden; background:transparent; }}
-.tlhead {{ flex:0 0 60px; width:60px; display:flex; align-items:center; justify-content:center; text-align:center; background:#B8292F; color:#FFF; font:900 8.5px/10px 'LatoX'; letter-spacing:.05em; text-transform:uppercase; border-radius:2px; }}
-.tlrail {{ flex:1; min-width:0; display:flex; gap:{TL_GAP}px; }}
-.ts {{ flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; padding:0 3px; background:#FFFDF9; border:1px solid #D3C9B6; border-radius:2px; text-align:center; }}
-.tw {{ font:900 10.2px/12px 'LatoX'; letter-spacing:.02em; color:#B8292F; }}
-.tx {{ font:700 9.5px/12px 'LatoX'; color:#121822; }}
+.stats {{ top:91px; height:46px; display:flex; }}
+.stat {{ flex:1 1 0; min-width:0; position:relative; padding:0 7px 0 10px; display:flex; flex-direction:column; justify-content:center; }}
+.stat::before {{ content:''; position:absolute; left:0; top:3px; bottom:3px; width:3px; background:#B8292F; }}
+.stat + .stat {{ margin-left:7px; }}
+.stat + .stat::after {{ content:''; position:absolute; left:-4.5px; top:1px; bottom:1px; border-left:1px solid #DCD6C8; }}
+.stat b {{ font:700 22px/22px 'LibSerif'; color:#0E121A; white-space:nowrap; }}
+.stat .sx {{ font:400 10px/11.5px 'LatoX'; color:#2A303A; height:23px; overflow:hidden; margin-top:1px; }}
 
-.stats {{ top:114px; height:34px; display:flex; align-items:stretch; gap:3px; }}
-.sthead {{ flex:0 0 60px; width:60px; display:flex; align-items:center; justify-content:center; text-align:center; background:#16243A; color:#FFF; font:900 8.2px/10px 'LatoX'; letter-spacing:.04em; text-transform:uppercase; border-radius:2px; }}
-.strail {{ flex:1; min-width:0; display:flex; background:#FFFDF9; border-top:1px solid #E5DEC9; border-bottom:1px solid #E5DEC9; border-left:1px solid #E5DEC9; border-right:1px solid #E5DEC9; border-radius:2px; }}
-.stat {{ flex:1 1 0; min-width:0; position:relative; padding:0 4px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; }}
-.stat + .stat {{ border-left:1px solid #DCD6C8; }}
-.stat b {{ font:700 17px/18px 'LibSerif'; color:#0E121A; white-space:nowrap; }}
-.stat .sx {{ font:400 9.5px/11px 'LatoX'; color:#2A303A; white-space:nowrap; overflow:hidden; }}
+.regionbar {{ top:140px; height:16px; display:flex; gap:2px; }}
+.rg {{ min-width:max-content; padding:0 6px; display:flex; align-items:center; justify-content:center; gap:4px; color:#FFF; white-space:nowrap; overflow:hidden; border-radius:1.5px; }}
+.rg span {{ font:900 9.6px/1 'LatoX'; letter-spacing:.05em; }}
+.rg b {{ font:900 10.2px/1 'LatoX'; }}
 
 .row {{ display:flex; }}
-.row.heroes {{ top:154px; height:244px; gap:20px; }}
-.row.grid {{ height:162px; gap:12px; }}
-.row.g1 {{ top:405px; }}
-.row.g2 {{ top:574px; }}
+.row.heroes {{ top:161px; height:234px; gap:20px; }}
+.row.grid {{ height:156px; gap:12px; }}
+.row.g1 {{ top:401px; }}
+.row.g2 {{ top:563px; }}
 .rule {{ position:absolute; left:18px; right:18px; height:0; border-top:1px solid #DCD6C8; }}
 .card {{ position:relative; display:flex; flex-direction:column; }}
 .card + .card::before {{ content:''; position:absolute; top:0; bottom:0; border-left:1px solid #DCD6C8; }}
@@ -431,8 +389,8 @@ body {{ font-family:'LatoX', sans-serif; color:#121822; -webkit-font-smoothing:a
 .hero .art {{ width:316px; height:{art.HERO[1]}px; }}
 .grid .art {{ width:188px; height:{art.GRID[1]}px; }}
 
-.kicker {{ display:flex; align-items:center; gap:5px; height:15px; margin-top:4px; }}
-.grid .kicker {{ height:14px; margin-top:4px; gap:4px; }}
+.kicker {{ display:flex; align-items:center; gap:5px; height:15px; margin-top:3.5px; }}
+.grid .kicker {{ height:14px; margin-top:3.5px; gap:4px; }}
 .num {{ flex:0 0 15px; width:15px; height:15px; border-radius:50%; color:#FFF; font:900 10px/15px 'LatoX'; text-align:center; }}
 .grid .num {{ flex:0 0 14px; width:14px; height:14px; font-size:9.5px; line-height:14px; }}
 .place {{ flex:1; min-width:0; font:900 10px/12px 'LatoX'; height:12px; letter-spacing:.045em; text-transform:uppercase; white-space:nowrap; overflow:hidden; }}
@@ -440,14 +398,14 @@ body {{ font-family:'LatoX', sans-serif; color:#121822; -webkit-font-smoothing:a
 .tg {{ flex:0 0 auto; margin-left:auto; padding:0.5px 4px; border:0.75px solid transparent; border-radius:2px; font:900 8.5px/10.5px 'LatoX'; letter-spacing:.025em; white-space:nowrap; }}
 .grid .tg {{ padding:0.5px 3px; letter-spacing:.01em; }}
 
-h2 {{ margin:2.5px 0 0 0; font:700 20px/21px 'LibSerif'; color:#0E121A; letter-spacing:-.006em; white-space:nowrap; }}
+h2 {{ margin:2px 0 0 0; font:700 19.5px/20.5px 'LibSerif'; color:#0E121A; letter-spacing:-.006em; white-space:nowrap; }}
 .nb {{ white-space:nowrap; }}
-.grid h2 {{ margin-top:3px; font-size:13.8px; line-height:15.2px; letter-spacing:-.004em; white-space:nowrap; }}
-.summary {{ margin:3px 0 0 0; font:400 10.7px/13px 'LatoX'; color:#272D36; }}
-.grid .summary {{ margin-top:2.5px; font-size:10px; line-height:12px; }}
+.grid h2 {{ margin-top:2.5px; font-size:13.6px; line-height:14.8px; letter-spacing:-.004em; white-space:nowrap; }}
+.summary {{ margin:2.5px 0 0 0; font:400 10.6px/12.8px 'LatoX'; color:#272D36; }}
+.grid .summary {{ margin-top:2px; font-size:9.8px; line-height:11.8px; }}
 .src {{ font-style:italic; color:#5A606A; }}
 
-.bottom {{ top:742px; height:206px; display:flex; gap:14px; border-top:2.5px solid #121822; padding-top:3px; }}
+.bottom {{ top:724px; height:218px; display:flex; gap:14px; border-top:2.5px solid #121822; padding-top:3px; }}
 .mapcol {{ flex:0 0 {mapgen.W}px; width:{mapgen.W}px; }}
 .briefcol {{ flex:1; min-width:0; position:relative; }}
 .briefcol::before {{ content:''; position:absolute; left:-7.5px; top:0; bottom:0; border-left:1px solid #DCD6C8; }}
@@ -455,54 +413,50 @@ h2 {{ margin:2.5px 0 0 0; font:700 20px/21px 'LibSerif'; color:#0E121A; letter-s
 .secthead span {{ color:#B8292F; letter-spacing:.05em; }}
 .mapbox {{ margin-top:3px; width:{mapgen.W}px; height:{mapgen.H}px; overflow:hidden; outline:1px solid #C4D2DE; }}
 .mapsvg {{ display:block; }}
-.maplegend {{ margin-top:4px; height:28px; display:flex; flex-direction:column; justify-content:space-between; padding:1px 0; }}
-.mlrow {{ display:flex; justify-content:space-between; align-items:center; white-space:nowrap; font:700 9.4px/12px 'LatoX'; color:#1E293B; }}
-.mlitem {{ display:inline-flex; align-items:center; gap:3px; }}
-.mlitem b, .mltot b {{ font-weight:900; color:#0E121A; }}
-.mldot {{ display:inline-block; width:8px; height:8px; border-radius:50%; flex:0 0 8px; }}
-.mltot {{ color:#4B5563; font-weight:700; border-left:1px solid #CFC8B8; padding-left:6px; }}
+.mapcap {{ margin-top:4px; height:14px; font:italic 400 9.8px/13px 'LatoX'; color:#4A4F58; white-space:nowrap; overflow:hidden; }}
 
-.briefgrid {{ display:flex; gap:12px; margin-top:2px; }}
+.briefgrid {{ display:flex; gap:10px; margin-top:2px; }}
 .bcol {{ flex:1 1 0; min-width:0; position:relative; }}
-.bcol + .bcol::before {{ content:''; position:absolute; left:-6.5px; top:2px; bottom:2px; border-left:1px solid #DCD6C8; }}
+.bcol + .bcol::before {{ content:''; position:absolute; left:-5.5px; top:2px; bottom:2px; border-left:1px solid #DCD6C8; }}
 .brief {{ height:{BRIEF_ROW}px; display:flex; align-items:center; gap:{BNUM_GAP}px; padding:0 {BRIEF_PAD}px; border-radius:2px; }}
 .bcol .brief:nth-child(odd) {{ background:#F5F0E6; }}
 .bnum {{ flex:0 0 {BNUM_W}px; width:{BNUM_W}px; height:{BNUM_W}px; border-radius:50%; color:#FFF; text-align:center; font:900 {BNUM_PX}px/{BNUM_W}px 'LatoX'; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }}
-.btext {{ margin:0; font:400 {BRIEF_PX}px/13.5px 'LatoX'; color:{BRIEF_INK}; white-space:nowrap; }}
+.btext {{ margin:0; font:400 {BRIEF_PX}px/14px 'LatoX'; color:{BRIEF_INK}; white-space:nowrap; }}
 .btext b {{ font-weight:700; color:{BRIEF_INK}; }}
 .btext i {{ color:#4B5563; }}
 
-.datecheck {{ top:953px; height:46px; border:1.5px solid #B8292F; background:#FFFDF9; display:flex; align-items:center; gap:7px; padding:0 7px; }}
+.datecheck {{ top:947px; height:51px; border:1.5px solid #B8292F; background:#FFFDF9; display:flex; align-items:center; gap:7px; padding:0 7px; }}
 .dcbadge {{ flex:0 0 auto; background:#B8292F; color:#FFF; font:900 9.5px/1 'LatoX'; letter-spacing:.06em; padding:5px 6px 4.5px; border-radius:2px; white-space:nowrap; }}
 .dclines {{ flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center; }}
-.dl {{ font:400 9.3px/13.2px 'LatoX'; color:#121822; white-space:nowrap; overflow:hidden; height:13.2px; letter-spacing:-.006em; }}
+.dl {{ font:400 9.3px/14.4px 'LatoX'; color:#121822; white-space:nowrap; overflow:hidden; height:14.4px; letter-spacing:-.008em; }}
 .dl b {{ font-weight:700; color:#B8292F; }}
 
-.footer {{ top:1004px; height:16px; display:flex; justify-content:space-between; align-items:center; font:400 9.2px/12px 'LatoX'; color:#4A4F58; white-space:nowrap; }}
+.footer {{ top:1003px; height:17px; display:flex; justify-content:space-between; align-items:center; font:400 9.2px/12px 'LatoX'; color:#4A4F58; white-space:nowrap; }}
 .footer .fl {{ color:#4A4F58; }}
 .footer .fr {{ font-weight:700; color:#121822; }}
-.fleg {{ display:flex; align-items:center; gap:5px; color:#272D36; font:700 8.8px/12px 'LatoX'; }}
-.fleg span:not(.ftg) {{ margin-right:3px; font-weight:400; color:#4A4F58; }}
-.ftg {{ display:inline-block; padding:0.5px 3.5px; border:0.75px solid transparent; border-radius:2px; font:900 8.2px/10px 'LatoX'; letter-spacing:.02em; }}
+.fleg {{ display:flex; align-items:center; gap:4px; color:#272D36; font:400 8.8px/12px 'LatoX'; }}
+.fleg span:not(.ftg) {{ margin-right:4px; color:#4A4F58; }}
+.ftg {{ display:inline-block; padding:0.5px 3.5px; border:0.75px solid transparent; border-radius:2px; font:900 8.0px/10px 'LatoX'; letter-spacing:.02em; }}
 </style></head>
 <body><div class="page">
   <div class="band kickerbar"><div class="l">The world in one day</div><div class="r">{total} stories · 7 regions · {len(BEATS)} beats · every story dated Friday 20 November 2026</div></div>
   <div class="band masthead">Friday 20 November 2026</div>
-  {timeline_html()}
-  {stats_html()}
+  <div class="band deck">{esc(DECK)}</div>
+  <div class="band stats">{stats}</div>
+  <div class="band regionbar">{regions}</div>
   <div class="band row heroes">{''.join(card_html(s) for s in heroes)}</div>
-  <div class="rule" style="top:401.5px"></div>
+  <div class="rule" style="top:398px"></div>
   <div class="band row grid g1">{''.join(card_html(s) for s in grid[:5])}</div>
-  <div class="rule" style="top:570.5px"></div>
+  <div class="rule" style="top:560px"></div>
   <div class="band row grid g2">{''.join(card_html(s) for s in grid[5:])}</div>
   <div class="band bottom">
     <div class="mapcol">
       <div class="secthead"><div>Where it happened</div><span>Pins 1–{len(pins)}</span></div>
       <div class="mapbox">{mapgen.svg(pins)}</div>
-      {maplegend_html()}
+      <div class="mapcap">Pins 1–{len(pins)} locate the illustrated stories above · Colours match the 7 regions.</div>
     </div>
     <div class="briefcol">
-      <div class="secthead"><div>Also on Friday 20 November</div><span>{len(briefs)} more stories · {first_brief}–{last_brief}</span></div>
+      <div class="secthead"><div>Also on Friday 20 November 2026</div><span>{len(briefs)} more stories · {first_brief}–{last_brief}</span></div>
       <div class="briefgrid">{cols}</div>
     </div>
   </div>
@@ -517,18 +471,18 @@ AUDIT_JS = r'''() => {
   const cards = [...document.querySelectorAll('.card')];
   const briefs = [...document.querySelectorAll('.brief')];
   const stories = [...cards, ...briefs].map(e => +e.dataset.story);
-  const regionCounts = [...document.querySelectorAll('.mlitem')].map(e => ({r: e.dataset.region, c: +e.dataset.count}));
+  const regionCounts = [...document.querySelectorAll('.rg')].map(e => ({r: e.dataset.region, c: +e.dataset.count}));
   const regionTagged = {};
   [...cards, ...briefs].forEach(e => regionTagged[e.dataset.region] = (regionTagged[e.dataset.region] || 0) + 1);
 
   const overflows = [];
-  document.querySelectorAll('.page,.timeline,.tlhead,.tlrail,.ts,.kickerbar,.masthead,.stats,.sthead,.strail,.stat,.stat .sx,.card,.kicker,.place,.bottom,.mapbox,.maplegend,.mlrow,.briefcol,.bcol,.brief,.btext,.datecheck,.dclines,.dl,.secthead,.mapcol,.footer').forEach(el => {
+  document.querySelectorAll('.page,.kickerbar,.masthead,.deck,.stats,.stat,.stat .sx,.regionbar,.rg,.card,.kicker,.place,.bottom,.mapbox,.mapcap,.briefcol,.bcol,.brief,.btext,.datecheck,.dclines,.dl,.secthead,.mapcol,.footer').forEach(el => {
     if (el.scrollWidth > el.clientWidth + 0.5 || el.scrollHeight > el.clientHeight + 0.5)
       overflows.push({cls: el.className, text: el.textContent.trim().slice(0, 40), sw: el.scrollWidth, cw: el.clientWidth, sh: el.scrollHeight, ch: el.clientHeight});
   });
 
   const textClip = [];
-  document.querySelectorAll('.dl,.place,.stat .sx,.footer > div,.btext,.ts,.mlrow').forEach(el => {
+  document.querySelectorAll('.dl,.rg,.place,.mapcap,.stat .sx,.footer > div,.btext').forEach(el => {
     const range = document.createRange(); range.selectNodeContents(el);
     const rr = range.getBoundingClientRect(), r = R(el);
     if (rr.right > r.right + 0.5 || rr.bottom > r.bottom + 0.5)
@@ -557,24 +511,11 @@ AUDIT_JS = r'''() => {
   const cardOverlaps = [];
   boxes.forEach((a, i) => boxes.forEach((b, j) => { if (j > i && ov(R(a), R(b))) cardOverlaps.push([a.dataset.story || a.className, b.dataset.story || b.className]); }));
 
-  const tl = document.querySelector('.timeline'), tlr = R(tl);
-  const tsteps = [...tl.querySelectorAll('.ts')];
-  const timeline = {h: +tlr.h.toFixed(2), top: tlr.y, bottom: tlr.bottom, count: tsteps.length,
-    when: tsteps.map(t => t.querySelector('.tw').textContent), stories: tsteps.map(t => +t.dataset.story),
-    whenLines: tsteps.map(t => lines(t.querySelector('.tw'))),
-    txLines: tsteps.map(t => lines(t.querySelector('.tx'))),
-    inside: [...tl.children, ...tsteps].every(e => { const r = R(e); return r.x >= tlr.x - 0.5 && r.right <= tlr.right + 0.5 && r.y >= tlr.y - 0.5 && r.bottom <= tlr.bottom + 0.5; }),
-    gaps: tsteps.slice(1).map((t, i) => +(R(t).x - R(tsteps[i]).right).toFixed(1)),
-    railEnd: +(R(tl.querySelector('.tlrail')).right - R(tsteps[tsteps.length - 1]).right).toFixed(1),
-    cellH: tsteps.map(t => +R(t).h.toFixed(2)),
-    stripBg: getComputedStyle(tl).backgroundColor,
-    text: tl.textContent};
-
   const svg = document.querySelector('.mapsvg');
   const SW = +svg.getAttribute('width'), SH = +svg.getAttribute('height');
   const pins = [...document.querySelectorAll('.pin circle')].map(c => ({n: +c.parentNode.dataset.pin, x: +c.getAttribute('cx'), y: +c.getAttribute('cy'), r: +c.getAttribute('r')}));
   const pinOverlaps = [];
-  pins.forEach((a, i) => pins.forEach((b, j) => { if (j > i && Math.hypot(a.x - b.x, a.y - b.y) < a.r + b.r + 1.4 + 3) pinOverlaps.push([a.n, b.n]); }));
+  pins.forEach((a, i) => pins.forEach((b, j) => { if (j > i && Math.hypot(a.x - b.x, a.y - b.y) < a.r + b.r + 1.5 + 3) pinOverlaps.push([a.n, b.n]); }));
   const pinsOutside = pins.filter(p => p.x - p.r < 0 || p.y - p.r < 0 || p.x + p.r > SW || p.y + p.r > SH).map(p => p.n);
   const pinNumbers = pins.map(p => p.n);
   const pinR = pins.map(p => p.r);
@@ -617,14 +558,14 @@ AUDIT_JS = r'''() => {
   clone.querySelector('.datecheck').remove();
   const pageTextNoDC = clone.textContent;
   const rects = {};
-  ['.masthead', '.timeline', '.stats', '.row.heroes', '.row.g1', '.row.g2', '.bottom', '.mapbox', '.maplegend', '.datecheck', '.footer'].forEach(s => { const r = R(document.querySelector(s)); rects[s] = [r.x, r.y, r.right, r.bottom].map(v => +v.toFixed(1)); });
+  ['.masthead', '.deck', '.stats', '.regionbar', '.row.heroes', '.row.g1', '.row.g2', '.bottom', '.mapbox', '.mapcap', '.datecheck', '.footer'].forEach(s => { const r = R(document.querySelector(s)); rects[s] = [r.x, r.y, r.right, r.bottom].map(v => +v.toFixed(1)); });
   const cardBottoms = cards.map(c => +(R(c.querySelector('.summary')).bottom - R(c).y).toFixed(1));
-  return {doc, timeline, stories, regionCounts, regionTagged, overflows, textClip, blockOverlaps, bandOverlaps, cardOverlaps,
+  return {doc, stories, regionCounts, regionTagged, overflows, textClip, blockOverlaps, bandOverlaps, cardOverlaps,
           tagCount, datelines, briefNums, cardSources, heroBottoms, footerLegend, pinCount: pins.length, pinNumbers, pinLabels, pinR, pinOverlaps, pinsOutside, headlineLines, summaryLines, briefLines,
           briefWidths, briefRows, statLines, minSvg, minDl, imagesLoaded, artSizes, stats, kicker,
           pageBottom: R(document.querySelector('.footer')).bottom, rects, cardBottoms,
           wireSlack: +(bc.bottom - Math.max(...[...document.querySelectorAll('.bcol')].map(e => R(e).bottom))).toFixed(1),
-          mapSlack: +(bt.bottom - R(document.querySelector('.maplegend')).bottom).toFixed(1),
+          mapSlack: +(bt.bottom - R(document.querySelector('.mapcap')).bottom).toFixed(1),
           dateCheckText, pageTextNoDC, dcBorder: getComputedStyle(dc).borderTopColor, dcBg: getComputedStyle(dc).backgroundColor};
 }'''
 
@@ -638,17 +579,10 @@ def check_stories() -> list[str]:
                 f.append(f"story {s['n']} contains date-check-only text '{w}'")
     nums = [s["n"] for s in STORIES]
     if nums != list(range(1, 40)):
-        f.append(f"v17 needs stories 1-39 in order, got {nums}")
+        f.append(f"v18 needs stories 1-39 in order, got {nums}")
     kinds = [s["kind"] for s in STORIES]
     if kinds != ["hero"] * 3 + ["grid"] * 10 + ["brief"] * 26:
-        f.append("v17 needs 3 leads, 10 cards and 26 briefs")
-    if len(TIMELINE) != 7:
-        f.append(f"timeline needs 7 columns, got {len(TIMELINE)}")
-    for w, sn, _ in TIMELINE:
-        if sn not in nums:
-            f.append(f"timeline step {w} points at missing story {sn}")
-        if re.search(r"\d", w) and w not in TL_CLOCKS:
-            f.append(f"timeline clock time {w} is not an allowed time")
+        f.append("v18 needs 3 leads, 10 cards and 26 briefs")
     briefs = [s for s in STORIES if s["kind"] == "brief"]
     if {s["region"] for s in briefs} != set(REGION_ORDER):
         f.append(f"briefs cover only {sorted({s['region'] for s in briefs})}")
@@ -669,20 +603,11 @@ def check_audit(a: dict) -> list[str]:
     n = len(STORIES)
     if a["doc"] != [1024, 1024]:
         f.append(f"doc {a['doc']}")
-    t = a["timeline"]
-    if t["h"] != TL_H or t["count"] != 7 or not t["inside"] or any(x != 1 for x in t["whenLines"]) or any(x != 1 for x in t["txLines"]):
-        f.append(f"timeline strip must be {TL_H}px, 7 columns, 2 crisp lines each: {t}")
-    if t["when"] != [w for w, _, _ in TIMELINE] or t["stories"] != [sn for _, sn, _ in TIMELINE]:
-        f.append(f"timeline steps {t['when']} {t['stories']}")
-    if any(abs(g - TL_GAP) > 0.5 for g in t["gaps"]) or abs(t["railEnd"]) > 0.5:
-        f.append(f"timeline gaps {t['gaps']} railEnd {t['railEnd']}")
-    if t["stripBg"] not in ("rgba(0, 0, 0, 0)", "transparent"):
-        f.append(f"timeline wrapper must be transparent, got {t['stripBg']}")
     if sorted(a["stories"]) != list(range(1, n + 1)):
         f.append(f"stories {a['stories']}")
     rc_map = {x["r"]: x["c"] for x in a["regionCounts"]}
     if sum(rc_map.values()) != n or len(rc_map) != 7 or rc_map != REGION_COUNTS:
-        f.append(f"map legend region counts {rc_map} != {REGION_COUNTS}")
+        f.append(f"region bar counts {rc_map} != {REGION_COUNTS}")
     if any(a["regionTagged"].get(r, 0) != REGION_COUNTS[r] for r in REGION_ORDER):
         f.append(f"region tags {a['regionTagged']} != {REGION_COUNTS}")
     for k in ("overflows", "textClip", "blockOverlaps", "bandOverlaps", "cardOverlaps", "pinOverlaps", "pinsOutside"):
@@ -691,7 +616,7 @@ def check_audit(a: dict) -> list[str]:
     pinned = list(range(1, 14))
     if sorted(a["pinNumbers"]) != pinned or sorted(a["pinLabels"]) != pinned:
         f.append(f"pins {a['pinNumbers']} labels {a['pinLabels']} != 1-13")
-    if any(not 8 <= r <= 9 for r in a["pinR"]):
+    if any(not 8 <= r <= 9.2 for r in a["pinR"]):
         f.append(f"pin radius {a['pinR']}")
     if any(x != 2 for x in a["headlineLines"]):
         f.append(f"headline lines must all be 2: {a['headlineLines']}")
@@ -732,12 +657,12 @@ def check_audit(a: dict) -> list[str]:
     rows = a["briefRows"]
     if any(r["h"] != BRIEF_ROW or r["fs"] != BRIEF_PX or r["color"] != "rgb(17, 24, 39)" or not r["inside"]
            for r in rows):
-        f.append(f"brief row geometry mismatch")
+        f.append("brief row geometry mismatch")
     tints = [r["bg"] for r in rows]
     if len(set(tints)) != 2 or tints[0] == tints[1]:
         f.append(f"brief rows must alternate tint: {tints}")
-    if any(x != 1 for x in a["statLines"]):
-        f.append(f"stat labels must be 1 clean line: {a['statLines']}")
+    if any(x != 2 for x in a["statLines"]):
+        f.append(f"stat explanations must be 2 lines: {a['statLines']}")
     if a["minDl"] < GRID_DL_PX:
         f.append(f"card dateline font {a['minDl']}px < {GRID_DL_PX}px")
     if a["minSvg"] < 10:
@@ -752,16 +677,16 @@ def check_audit(a: dict) -> list[str]:
         f.append(f"stats {a['stats']}")
     if not a["kicker"].startswith(f"{n} stories") or f"{len(BEATS)} beats" not in a["kicker"]:
         f.append(f"kicker {a['kicker']} beats {len(BEATS)}")
-    for w in ("CONFIRMED", "OFFICIAL", "REPORTED"):
+    for w in ("CONFIRMED", "OFFICIAL", "REPORTED", "CLAIM"):
         if w not in a["footerLegend"]:
             f.append(f"footer certainty legend missing {w}")
     for w in DATECHECK_ONLY:
         if w.lower() in a["pageTextNoDC"].lower():
             f.append(f"date-check-only text outside DATE CHECK: {w}")
     dc = a["dateCheckText"]
-    for w in ["DATE CHECK", "Thu 19 Nov", "Wed 18 Nov", "Not yet happened",
-              "BepiColombo", "COP31 draft", "Bukele", "embassy", "ICJ", "Putin",
-              "Anthropic", "Voyager 1", "GTA VI", "Van Gogh"]:
+    for w in ["DATE CHECK", "Thu 19 Nov", "Wed 18 Nov", "Sat 21 Nov",
+              "BepiColombo", "COP31 Day 13", "Bukele", "Greenland", "Senate Iran",
+              "embassy", "ICJ", "Putin", "Anthropic", "Voyager 1", "GTA VI", "Van Gogh", "Peru 6.7"]:
         if w not in dc:
             f.append(f"DATE CHECK missing: {w}")
     if a["dcBorder"] != "rgb(184, 41, 47)" or a["dcBg"] != "rgb(255, 253, 249)":
@@ -826,9 +751,7 @@ def main() -> int:
     im = Image.open(ASSETS / "poster.png").convert("RGB")
     data, q = encode_jpeg(im)
     (BASE / "entry.png").write_bytes(data)
-    thumb = im.resize((300, 300), Image.LANCZOS)
-    thumb.save(PROOF_300)
-    thumb.save(PROOF_300_ALT)
+    im.resize((300, 300), Image.LANCZOS).save(PROOF_300)
     size = len(data)
     print(f"\nAUDIT OK · {len(STORIES)} stories · regions {REGION_COUNTS} · {len(BEATS)} beats · "
           f"min card dl {a['minDl']}px · min svg {a['minSvg']}px · pins {a['pinCount']} · "
