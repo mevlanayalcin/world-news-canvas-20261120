@@ -1,4 +1,4 @@
-"""Locator map for the v13 front page: Natural Earth 110m land, Miller projection.
+"""Locator map for the v15 front page: Natural Earth 110m land, Miller projection.
 
 Dark ocean, cream land. The map is emitted as an inline SVG at its printed
 size (294 px wide, height set by the projection), so pins and numbers are
@@ -17,7 +17,7 @@ BASE = Path(__file__).resolve().parent
 ASSETS = BASE / "assets"
 
 W = 294
-LON0, LON1 = -116.0, 179.0
+LON0, LON1 = -126.0, 179.0   # v15: west edge at 126°W so Redwood City (pin 11) is on the map
 LAT_TOP, LAT_BOT = 72.0, -55.0
 PIN_R = 8.5
 RING = 0.75               # half the 1.5 px white ring stroke, px

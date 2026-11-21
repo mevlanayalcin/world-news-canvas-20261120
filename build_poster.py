@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Build the Friday 20 November 2026 world-news front page (v14).
+"""Build the Friday 20 November 2026 world-news front page (v15).
 
 Run:  python3 build_poster.py
 Writes: assets/art_01..13.png, assets/poster.png, entry.png (1024x1024
-progressive 4:4:4 JPEG at q89, 440,000-480,000 bytes) and
-/tmp/news_1120_v14_300.png (300 px Lanczos proof).
+progressive 4:4:4 JPEG at q89, 440,000-485,000 bytes) and
+/tmp/news_1120_v15_300.png (300 px Lanczos proof).
 """
 from __future__ import annotations
 
@@ -25,9 +25,9 @@ import mapgen
 BASE = Path(__file__).resolve().parent
 ASSETS = BASE / "assets"
 CHROME = "/usr/bin/google-chrome"
-BUILD_TMP = Path("/tmp/news_1120_v14_build")
-PROOF_300 = Path("/tmp/news_1120_v14_300.png")
-MIN_BYTES, MAX_BYTES = 440_000, 480_000   # v14 hard budget; the gate limit is 1,048,576 bytes
+BUILD_TMP = Path("/tmp/news_1120_v15_build")
+PROOF_300 = Path("/tmp/news_1120_v15_300.png")
+MIN_BYTES, MAX_BYTES = 440_000, 485_000   # v15 hard budget; the gate limit is 1,048,576 bytes
 QUALITIES = (89,)
 
 LATO = Path("/usr/share/fonts/truetype/lato")
@@ -49,7 +49,7 @@ DATELINE_GAP = 6         # clear px between the end of PLACE · BEAT and its cer
 # omissions.
 # kind: hero (1-3) · grid (4-13) · brief (14-37).
 # dl: the beat word printed in the dateline; beat: the category counted in
-# the "25 beats" tally.
+# the "26 beats" tally.
 # Every illustrated story prints PLACE · BEAT on its dateline row, with its
 # tag (OFFICIAL / CONFIRMED / REPORTED) as a tinted pill at the row's right end.
 # The 188 px cards use short place names so both fit on one line.
@@ -58,7 +58,7 @@ DATELINE_GAP = 6         # clear px between the end of PLACE · BEAT and its cer
 STORIES = [
     # --- lead stories -------------------------------------------------------
     dict(n=1, kind="hero", region="EUROPE", beat="Conflict", dl="War", place="Kyiv, Ukraine",
-         src="Kyiv Independent, Reuters", tag="OFFICIAL",
+         src="Kyiv Independent, Reuters, Al Jazeera", tag="OFFICIAL",
          headline="Russian Missiles Hit Three\nBridges Across the Dnipro",
          summary="Strikes damage three Dnipro crossings in a barrage of about 110 missiles and "
                  "400 drones; officials say 3 were killed in Kyiv and at least 8 nationwide.",
@@ -70,119 +70,120 @@ STORIES = [
                  "inland; up to 372,000 people were moved to shelters and no deaths have been "
                  "reported.",
          art="art_02.png", pin=(84.8, 19.4)),   # Gopalpur coast, on 110m land
-    dict(n=3, kind="hero", region="ASIA-PACIFIC", beat="Markets", dl="Markets",
-         place="Taipei · Seoul · Tokyo", src="Reuters, Al Jazeera", tag="CONFIRMED",
-         headline="AI Sell-Off Sinks Asia’s Stock\nMarkets in Worst Week Since 2020",
-         summary="Taiwan’s Taiex closes −6.23%, Korea’s Kospi −5.21% and Japan’s Nikkei −5.06% "
-                 "as chipmakers lead the rout and fears over AI spending deepen.",
-         art="art_03.png", pin=(121.5, 25.0)),
+    dict(n=3, kind="hero", region="GLOBAL/SCIENCE", beat="Markets", dl="AI rout",
+         place="Global markets", src="Reuters, CNBC", tag="CONFIRMED",
+         headline="Global AI Sell-Off Sends the\nS&P 500 Into a Correction",
+         summary="The Nasdaq falls −5.3% and the S&P 500 −3.7% after Taiwan’s Taiex closes "
+                 "−6.23%, Korea’s Kospi −5.21% and Japan’s Nikkei −5.06%, Asia’s worst week "
+                 "since 2020.",
+         art="art_03.png", pin=(121.5, 25.0)),   # Taipei, the day's steepest fall
     # --- illustrated cards --------------------------------------------------
-    dict(n=4, kind="grid", region="EUROPE", beat="Diplomacy", dl="Diplomacy", place="Brussels",
+    dict(n=4, kind="grid", region="AMERICAS", beat="Tech", dl="Tech", place="US",
+         src="Reuters, NYT", tag="REPORTED",
+         headline="Nvidia Faces US SEC Accounting Probe",
+         summary="Reuters reports the SEC is examining its accounting; shares plunge.",
+         art="art_04.png", pin=(-77.0, 38.9)),   # SEC headquarters, Washington
+    dict(n=5, kind="grid", region="EUROPE", beat="Diplomacy", dl="Diplomacy", place="Brussels",
          src="EU, Guardian", tag="CONFIRMED",
          headline="UK and EU Seal Post-Brexit Reset",
          summary="It cuts food checks and adds 100,000 youth mobility places a year.",
-         art="art_04.png", pin=(4.35, 50.85)),
-    dict(n=5, kind="grid", region="GLOBAL/SCIENCE", beat="Climate", dl="Climate", place="Antalya",
+         art="art_05.png", pin=(4.35, 50.85)),
+    dict(n=6, kind="grid", region="GLOBAL/SCIENCE", beat="Climate", dl="Climate", place="Antalya",
          src="UN, AFP", tag="CONFIRMED",
          headline="COP31 Hits Final Day Without a Deal",
          summary="The draft omits a fossil-fuel phase-out and talks run into overtime.",
-         art="art_05.png", pin=(30.7, 36.9)),
-    dict(n=6, kind="grid", region="EUROPE", beat="Security", dl="Security", place="Poland",
+         art="art_06.png", pin=(30.7, 36.9)),
+    dict(n=7, kind="grid", region="EUROPE", beat="Security", dl="Security", place="Poland",
          src="Guardian", tag="OFFICIAL",
          headline="Russian Cruise Missile Enters Poland",
          summary="Poland’s prime minister calls the incursion an ‘intentional provocation’.",
-         art="art_06.png", pin=(23.0, 51.5)),
-    dict(n=7, kind="grid", region="MIDDLE EAST", beat="Security", dl="Security", place="Iraq",
-         src="Iraqi officials, Reuters", tag="OFFICIAL",
-         headline="Iraqi Army Enters Militia Stronghold",
-         summary="Troops enter the Kataib Hezbollah base on the PM’s order.",
-         art="art_07.png", pin=(44.2, 32.9)),
-    dict(n=8, kind="grid", region="EUROPE", beat="Labour", dl="Labour", place="Rome",
-         src="La Repubblica, AP", tag="CONFIRMED",
-         headline="Italy Halts in 24-Hour General Strike",
-         summary="The CGIL union’s walkout hits more than 100 cities.",
-         art="art_08.png", pin=(12.5, 41.9)),
-    dict(n=9, kind="grid", region="ASIA-PACIFIC", beat="Economy", dl="Economy", place="Tokyo",
-         src="MIC, Japan Times", tag="OFFICIAL",
-         headline="Japan Inflation Rises to 2.3% in October",
-         summary="Core CPI is 2.2%, lifting bets on a December BOJ hike.",
-         art="art_09.png", pin=(139.7, 35.7)),
-    dict(n=10, kind="grid", region="ASIA-PACIFIC", beat="Courts", dl="Courts", place="Seoul",
-         src="Korea Herald", tag="REPORTED",
-         headline="Ruling Party Moves to Impeach Top Judge",
-         summary="The Democratic Party targets Chief Justice Cho Hee-dae.",
-         art="art_10.png", pin=(127.0, 37.6)),
-    dict(n=11, kind="grid", region="AFRICA", beat="Energy", dl="Energy", place="Kenya",
+         art="art_07.png", pin=(23.0, 51.5)),
+    dict(n=8, kind="grid", region="MIDDLE EAST", beat="Shipping", dl="Maritime", place="Hormuz",
+         src="UKMTO, gCaptain", tag="OFFICIAL",
+         headline="Tanker Struck Near Oman in Strait of Hormuz",
+         summary="The vessel is hit amid a surge in attacks on regional shipping.",
+         art="art_08.png", pin=(56.4, 26.2)),    # Musandam, Oman
+    dict(n=9, kind="grid", region="ASIA-PACIFIC", beat="Diplomacy", dl="Talks", place="New Delhi",
+         src="Al Jazeera, PTI", tag="CONFIRMED",
+         headline="Pakistani Minister Makes Rare Visit to India",
+         summary="The first since the May 2025 conflict, for an SCO meeting.",
+         art="art_09.png", pin=(77.2, 28.6)),
+    dict(n=10, kind="grid", region="AFRICA", beat="Energy", dl="Energy", place="Kenya",
          src="The Star", tag="CONFIRMED",
          headline="Kenya Begins Drilling First Oil Well",
          summary="Drilling starts at the Amosing field; first exports are planned for 2027.",
-         art="art_11.png", pin=(35.7, 2.5)),
-    dict(n=12, kind="grid", region="AMERICAS", beat="Elections", dl="Polls", place="El Salvador",
-         src="AP", tag="CONFIRMED",
-         headline="Bukele Registers Bid for Third Term",
-         summary="He files with the electoral tribunal ahead of the February vote.",
-         art="art_12.png", pin=(-89.2, 13.7)),
+         art="art_10.png", pin=(35.6, 3.1)),     # Turkana
+    dict(n=11, kind="grid", region="GLOBAL/SCIENCE", beat="Medicine", dl="Medicine", place="Global",
+         src="OncLive, Oncodaily", tag="REPORTED",
+         headline="Pancreatic Cancer Drug Trial Hits 60.7% Response",
+         summary="Daraxonrasib plus chemo, in first-line metastatic disease.",
+         art="art_11.png", pin=(-122.2, 37.5)),  # Redwood City, home of developer Revolution Medicines
+    dict(n=12, kind="grid", region="AMERICAS", beat="Markets", dl="Markets", place="Argentina",
+         src="Buenos Aires Herald, Bloomberg", tag="CONFIRMED",
+         headline="Argentina Country Risk Tops 1,000 Points",
+         summary="It jumps over 10% in a global bond sell-off.",
+         art="art_12.png", pin=(-58.4, -34.6)),  # Buenos Aires
     dict(n=13, kind="grid", region="OCEANIA", beat="Sport", dl="Cricket", place="Wellington",
          src="ICC, RNZ", tag="CONFIRMED",
          headline="Phillips Hits 118 as NZ Make 368 v India",
          summary="Glenn Phillips’ century is backed by Henry Nicholls, unbeaten on 175.",
          art="art_13.png", pin=(174.8, -41.3)),
     # --- also on Friday: 24 wire briefs, 12 per column, every region ---
-    # --- Europe ---------------------------------------------
+    # --- Europe -------------------------------------------------------------
     dict(n=14, kind="brief", region="EUROPE", beat="Conflict", place="Lviv",
-         text="Sknyliv rail station struck overnight, 2 killed", src="Kyiv Independent"),
-    dict(n=15, kind="brief", region="EUROPE", beat="Diplomacy", place="Paris",
-         text="Seeks UNSC session after embassies hit in Kyiv", src="Quai d’Orsay"),
-    dict(n=16, kind="brief", region="EUROPE", beat="Protest", place="Berlin",
+         text="Sknyliv rail station struck overnight, 2 killed", src="Kyiv Ind."),
+    dict(n=15, kind="brief", region="EUROPE", beat="Borders", place="Estonia",
+         text="To close Russia border for 6+ months from Dec 1", src="Reuters"),
+    dict(n=16, kind="brief", region="EUROPE", beat="Labour", place="Rome",
+         text="CGIL 24-hr general strike hits 100+ cities", src="La Repubblica"),
+    dict(n=17, kind="brief", region="EUROPE", beat="Protest", place="Berlin",
          text="Gen Z rally over military service in 73 cities", src="organisers"),
-    dict(n=17, kind="brief", region="EUROPE", beat="Sport", place="Turin",
+    dict(n=18, kind="brief", region="EUROPE", beat="Sport", place="Turin",
          text="ATP plans to lift player pay past $350m by 2028", src="ATP"),
     # --- Asia-Pacific -------------------------------------------------------
-    dict(n=18, kind="brief", region="ASIA-PACIFIC", beat="Central banks", place="Beijing",
+    dict(n=19, kind="brief", region="ASIA-PACIFIC", beat="Economy", place="Tokyo",
+         text="Oct CPI 2.3%, core 2.2%; BOJ hike bets rise", src="MIC"),
+    dict(n=20, kind="brief", region="ASIA-PACIFIC", beat="Courts", place="Seoul",
+         text="Ruling party moves to impeach chief justice", src="Korea Herald"),
+    dict(n=21, kind="brief", region="ASIA-PACIFIC", beat="Central banks", place="Beijing",
          text="Loan prime rates held: 1-year 3.0%, 5-year 3.5%", src="PBOC"),
-    dict(n=19, kind="brief", region="ASIA-PACIFIC", beat="Health", place="Changwon",
-         text="Korea’s first domestic cholera case in 10 years", src="KDCA"),
-    dict(n=20, kind="brief", region="ASIA-PACIFIC", beat="Disinformation", place="Taipei",
+    dict(n=22, kind="brief", region="ASIA-PACIFIC", beat="Health", place="Changwon",
+         text="Korea’s first local cholera case in 10 years", src="KDCA"),
+    dict(n=23, kind="brief", region="ASIA-PACIFIC", beat="Disinformation", place="Taipei",
          text="2,700 China-linked accounts flagged to Meta", src="Reuters"),
-    dict(n=21, kind="brief", region="ASIA-PACIFIC", beat="Markets", place="Singapore",
-         text="STI slides 2.1% to close below 5,000", src="SGX"),
-    dict(n=22, kind="brief", region="ASIA-PACIFIC", beat="Diplomacy", place="Shenzhen",
-         text="Xi meets Malaysia’s Anwar on APEC sidelines", src="FMPRC"),
+    dict(n=24, kind="brief", region="ASIA-PACIFIC", beat="Diplomacy", place="Shenzhen",
+         text="Xi meets Anwar, hails ‘turnaround’ with Albanese", src="ABC"),
     # --- Americas -----------------------------------------------------------
-    dict(n=23, kind="brief", region="AMERICAS", beat="US politics", place="Washington",
-         text="Trump hails Asia trip, rejects Iran offer", src="CBS"),
-    dict(n=24, kind="brief", region="AMERICAS", beat="Tech", place="New York",
-         text="Nasdaq falls over 3% as the AI sell-off spreads", src="Reuters"),
-    dict(n=25, kind="brief", region="AMERICAS", beat="Weather", place="Brevard, FL",
+    dict(n=25, kind="brief", region="AMERICAS", beat="Central banks", place="Washington",
+         text="Fed’s Cook: rate hikes needed on high inflation", src="WSJ"),
+    dict(n=26, kind="brief", region="AMERICAS", beat="Weather", place="Brevard, FL",
          text="Record floods: emergency, 100+ rescues", src="NWS"),
-    dict(n=26, kind="brief", region="AMERICAS", beat="Sport", place="Las Vegas",
+    dict(n=27, kind="brief", region="AMERICAS", beat="Motor racing", place="Las Vegas",
          text="Russell tops wet second practice in 1:47.272", src="F1"),
     # --- Global / science ---------------------------------------------------
-    dict(n=27, kind="brief", region="GLOBAL/SCIENCE", beat="UN", place="New York",
-         text="9th straw poll on the next secretary-general", src="SCR"),
     dict(n=28, kind="brief", region="GLOBAL/SCIENCE", beat="Wildlife", place="Amazon",
          text="25-year camera traps benchmark the bush dog", src="WCS"),
     # --- Middle East --------------------------------------------------------
-    dict(n=29, kind="brief", region="MIDDLE EAST", beat="Conflict", place="Riyadh",
+    dict(n=29, kind="brief", region="MIDDLE EAST", beat="Security", place="Iraq",
+         text="Army enters Kataib Hezbollah base on PM’s order", src="Reuters"),
+    dict(n=30, kind="brief", region="MIDDLE EAST", beat="Conflict", place="Gaza",
+         text="Israeli drone strikes kill seven in central Gaza", src="Al Jazeera"),
+    dict(n=31, kind="brief", region="MIDDLE EAST", beat="Defence", place="Riyadh",
          text="Coalition intercepts 1 Houthi missile and 5 drones", src="AP"),
-    dict(n=30, kind="brief", region="MIDDLE EAST", beat="Piracy", place="Mukalla",
+    dict(n=32, kind="brief", region="MIDDLE EAST", beat="Piracy", place="Mukalla",
          text="Skiff fires on ship 95 nm SW; guards repel it", src="UKMTO"),
-    dict(n=31, kind="brief", region="MIDDLE EAST", beat="Shipping", place="Hormuz",
-         text="US Iran-blockade memo lifts war-risk cover", src="Al Jazeera"),
     # --- Africa -------------------------------------------------------------
-    dict(n=32, kind="brief", region="AFRICA", beat="Migration", place="Dakar",
+    dict(n=33, kind="brief", region="AFRICA", beat="Migration", place="Dakar",
          text="Migration declaration and roadmap adopted", src="IOM"),
-    dict(n=33, kind="brief", region="AFRICA", beat="Markets", place="Johannesburg",
+    dict(n=34, kind="brief", region="AFRICA", beat="Markets", place="Johannesburg",
          text="Rand hits 1-year low on coalition jitters", src="Reuters"),
-    dict(n=34, kind="brief", region="AFRICA", beat="Debt", place="Abidjan",
+    dict(n=35, kind="brief", region="AFRICA", beat="Debt", place="Abidjan",
          text="22 African states in or at high risk of debt distress", src="AfDB"),
-    dict(n=35, kind="brief", region="AFRICA", beat="Energy", place="Lilongwe",
+    dict(n=36, kind="brief", region="AFRICA", beat="Energy", place="Lilongwe",
          text="Fuel queues persist despite $30m release", src="Al Jazeera"),
     # --- Oceania ------------------------------------------------------------
-    dict(n=36, kind="brief", region="OCEANIA", beat="Business", place="Sydney",
+    dict(n=37, kind="brief", region="OCEANIA", beat="Business", place="Sydney",
          text="David Jones collapses; 1,689 redundancy notices", src="receivers"),
-    dict(n=37, kind="brief", region="OCEANIA", beat="Diplomacy", place="Shenzhen",
-         text="Xi hails ‘full turnaround’, praises Albanese", src="ABC"),
 ]
 
 REGION_ORDER = ["EUROPE", "ASIA-PACIFIC", "AMERICAS", "MIDDLE EAST", "AFRICA", "OCEANIA", "GLOBAL/SCIENCE"]
@@ -197,47 +198,50 @@ TAG_COLORS = {"CONFIRMED": ("#17605B", "#DCEDEA"), "OFFICIAL": ("#16243A", "#E2E
 STATS = [
     ("3", "bridges over the Dnipro damaged in Kyiv strikes"),
     ("372,000", "evacuated in Odisha as Cyclone Akvan lands"),
-    ("−6.23%", "Taiwan Taiex close in Asia’s worst AI week"),
+    ("−5.3%", "Nasdaq drop (S&P −3.7%, Taiex −6.2%) in AI rout"),
+    ("60.7%", "pancreatic cancer response in daraxonrasib trial"),
     ("100,000", "annual youth mobility places in UK–EU reset"),
-    ("2.3%", "Japan Oct headline CPI, lifting BOJ hike bets"),
     ("118", "Glenn Phillips runs as NZ make 368 vs India"),
 ]
 # every stat must be backed by its story's text on the page
-STAT_SOURCES = {"3": (1, "three Dnipro"), "372,000": (2, "372,000"), "−6.23%": (3, "−6.23%"),
-                "100,000": (4, "100,000"), "2.3%": (9, "2.3%"), "118": (13, "118")}
+STAT_SOURCES = {"3": (1, "three Dnipro"), "372,000": (2, "372,000"), "−5.3%": (3, "−5.3%"),
+                "60.7%": (11, "60.7%"), "100,000": (5, "100,000"), "118": (13, "118")}
+# figures quoted inside a stat label must also appear in that story
+STAT_EXTRA = {"−5.3%": (3, ["−3.7%", "−6.23%"]), "60.7%": (11, ["Daraxonrasib"])}
 
-# Friday 20 November in UTC order. Only one clock time is printed: Cyclone
-# Akvan's landfall "around 8 am local time" (IST = UTC+5:30), i.e. ~02:30Z.
-# Every other step is a phase label because no exact time was published.
+# Friday 20 November in UTC order. Three clock times are printed, each a
+# published time: Cyclone Akvan's landfall "around 8 am local time" (IST =
+# UTC+5:30, so ~02:30Z), the OncLive/Oncodaily trial release (15:50Z) and the
+# Reuters SEC exclusive on Nvidia (21:37Z). The other steps are phase labels.
 # Japan's CPI (08:30 JST = 23:30Z Thursday) and the Wellington Test (NZ day
 # play is mostly Thursday UTC) are left off this UTC strip on purpose.
 # (when, story number, label)
 TIMELINE = [
-    ("OVERNIGHT", 1, "Kyiv bridges hit"),
+    ("OVERNIGHT", 1, "Kyiv bridges"),
     ("~02:30Z", 2, "Akvan landfall"),
-    ("ASIA CLOSE", 3, "Taiex −6.23%"),
-    ("EUROPE DAY", 4, "UK–EU reset"),
-    ("US SESSION", 24, "Nasdaq −3%+"),
-    ("LATE UTC", 5, "COP31 overtime"),
+    ("ASIA CLOSE", 3, "Taiex −6.2%"),
+    ("EUROPE DAY", 5, "UK–EU reset"),
+    ("15:50Z", 11, "Cancer trial 60.7%"),
+    ("21:37Z", 4, "Nvidia SEC · S&P −3.7%"),
 ]
-TL_CLOCKS = {"~02:30Z"}          # the only clock times allowed on the strip
+TL_CLOCKS = {"~02:30Z", "15:50Z", "21:37Z"}   # the only clock times allowed on the strip
 
 DECK = ("Missiles hit three Kyiv bridges · Cyclone Akvan lands in Odisha · "
-        "Asia’s chip stocks sink · UK and EU seal reset · COP31 runs over")
+        "AI rout pulls the S&P 500 into correction · SEC probes Nvidia · UK and EU seal reset")
 
 DC_THURSDAY = ("Left out as Thursday 19 November’s news:",
-               "ICJ’s Myanmar genocide ruling, Trump–Xi–Putin Shenzhen declaration, "
-               "Pentagon’s $48.3bn Iran war tally, Anthropic’s $83 IPO debut, "
-               "Voyager 1’s light-day milestone & GTA VI launch.")
+               "Bukele’s third-term bid, Kyiv embassy damage, ICJ Myanmar ruling, "
+               "Trump–Xi–Putin Shenzhen talks, Anthropic’s $83 debut, Voyager 1’s light-day "
+               "& GTA VI launch.")
 DC_SATURDAY = ("Not yet happened on Friday 20 November, so not shown as fact:",
-               "BepiColombo’s Saturday 21 November capture into Mercury orbit and any final "
-               "COP31 agreement text.")
+               "BepiColombo’s Saturday 21 Nov Mercury orbit capture and any final COP31 text.")
 FOOT_L = ("Every story here happened, or was first reported, on Friday 20 November 2026 (UTC). "
           "Officials’ counts and single-side claims are attributed.")
 FOOT_R = "Sources named beside each story · Original vector drawings"
 # words that may appear only inside the DATE CHECK box, never in a story
 DATECHECK_ONLY = ["BepiColombo", "Mercury", "Saturday", "Thursday", "19 Nov", "21 Nov", "ICJ",
-                  "Putin", "Pentagon", "48.3bn", "Anthropic", "Voyager", "GTA", "Myanmar"]
+                  "Putin", "Pentagon", "48.3bn", "Anthropic", "Voyager", "GTA", "Myanmar",
+                  "Bukele", "embass"]
 
 
 def b64(path: Path) -> str:
@@ -582,10 +586,10 @@ def check_stories() -> list[str]:
                 f.append(f"story {s['n']} contains date-check-only text '{w}'")
     nums = [s["n"] for s in STORIES]
     if nums != list(range(1, 38)):
-        f.append(f"v14 needs stories 1-37 in order, got {nums}")
+        f.append(f"v15 needs stories 1-37 in order, got {nums}")
     kinds = [s["kind"] for s in STORIES]
     if kinds != ["hero"] * 3 + ["grid"] * 10 + ["brief"] * 24:
-        f.append("v14 needs 3 leads, 10 cards and 24 briefs")
+        f.append("v15 needs 3 leads, 10 cards and 24 briefs")
     for w, sn, _ in TIMELINE:
         if sn not in nums:
             f.append(f"timeline step {w} points at missing story {sn}")
@@ -601,7 +605,12 @@ def check_stories() -> list[str]:
         s = STORIES[sn - 1]
         if phrase not in s["headline"].replace("\n", " ") + " " + s["summary"]:
             f.append(f"stat {v} not backed by story {sn} ('{phrase}')")
-    if len(BEATS) < 25:
+    for v, (sn, phrases) in STAT_EXTRA.items():
+        s = STORIES[sn - 1]
+        for phrase in phrases:
+            if phrase not in s["summary"]:
+                f.append(f"stat {v} label figure '{phrase}' not in story {sn}")
+    if len(BEATS) < 26:
         f.append(f"only {len(BEATS)} beats")
     return f
 
@@ -702,8 +711,8 @@ def check_audit(a: dict) -> list[str]:
         if w in a["pageTextNoDC"]:
             f.append(f"date-check-only text outside DATE CHECK: {w}")
     dc = a["dateCheckText"]
-    for w in ["DATE CHECK", DC_THURSDAY[0], DC_SATURDAY[0], "BepiColombo", "COP31 agreement text",
-              "ICJ", "Putin", "48.3bn", "Anthropic", "Voyager 1", "GTA VI"]:
+    for w in ["DATE CHECK", DC_THURSDAY[0], DC_SATURDAY[0], "BepiColombo", "COP31 text", "Bukele",
+              "embassy", "ICJ", "Putin", "Anthropic", "Voyager 1", "GTA VI"]:
         if w not in dc:
             f.append(f"DATE CHECK missing: {w}")
     if a["dcBorder"] != "rgb(184, 41, 47)" or a["dcBg"] != "rgb(255, 253, 249)":

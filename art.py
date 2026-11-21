@@ -1,4 +1,4 @@
-"""Editorial illustrations for the Friday 20 November 2026 front page (v8).
+"""Editorial illustrations for the Friday 20 November 2026 front page (v15).
 
 Each picture has two layers:
 
@@ -370,19 +370,20 @@ def art_akvan():
     a.finish("CYCLONE AKVAN", "Landfall · 8 am", "Weather office · IMD", overlay=akvan_labels)
 
 
-# ---- 3. Asia AI sell-off ---------------------------------------------------
+# ---- 3. Global AI sell-off -------------------------------------------------
 CORAL = (255, 107, 107)  # #ff6b6b
-SCOREBOARD = [("Taipei", "−6.2%"), ("Seoul", "−5.2%"), ("Tokyo", "−5.1%"), ("Sing.", "−2.1%")]
+BOARD_PX = 14             # v15: 14 px type on the four-index board
+SCOREBOARD = [("Taipei", "−6.2%"), ("Nasdaq", "−5.3%"), ("Seoul", "−5.2%"), ("S&P 500", "−3.7%")]
 
 
 def chips_scoreboard(a: Art, d: ImageDraw.ImageDraw):
-    """Four-market closing board, drawn at printed size beside the chart."""
-    x0, y0, x1, y1 = 203, 6, 310, 126
+    """Four-index closing board (Asia and Wall Street), drawn at printed size beside the chart."""
+    x0, y0, x1, y1 = 193, 6, 310, 126   # v15: 117 px wide so "S&P 500  −3.7%" keeps 9 px between
     d.rounded_rectangle([x0, y0, x1, y1], radius=4, fill=(30, 40, 60), outline=(78, 92, 120), width=1)
     head = font(LATO_BLACK, 10)
     d.text(((x0 + x1) / 2, y0 + 10), "INDEX CLOSE", font=head, fill=(170, 182, 204), anchor="mm")
     d.line([(x0 + 6, y0 + 19), (x1 - 6, y0 + 19)], fill=(78, 92, 120), width=1)
-    city, pct = font(LATO_BOLD, 15), font(LATO_BLACK, 15)
+    city, pct = font(LATO_BOLD, BOARD_PX), font(LATO_BLACK, BOARD_PX)
     row_h = (y1 - y0 - 22) / len(SCOREBOARD)
     for i, (c, v) in enumerate(SCOREBOARD):
         cy = y0 + 22 + row_h * (i + 0.5)
@@ -392,14 +393,14 @@ def chips_scoreboard(a: Art, d: ImageDraw.ImageDraw):
             yy = round(y0 + 22 + row_h * i)
             d.line([(x0 + 6, yy), (x1 - 6, yy)], fill=(52, 64, 88), width=1)
     LABELS.append(dict(art=a.name, kind="board", text="scoreboard", bbox=(x0, y0, x1, y1),
-                       size=15, img=a.size, lead=a.lead))
+                       size=BOARD_PX, img=a.size, lead=a.lead))
 
 
 def art_chips():
     a = Art("art_03.png", HERO, (16, 22, 34), HERO_BAND)
     with a.background():
         a.rect(0, 0, 1, 1, fill=(18, 24, 38), outline=None)
-        cx0, cx1 = 15 / 316, 195 / 316           # chart spans x = 15..195 at 1x
+        cx0, cx1 = 15 / 316, 185 / 316           # chart spans x = 15..185 at 1x
         for k in range(1, 6):
             a.line([(cx0, k * 0.16), (cx1, k * 0.16)], (40, 50, 70), 1)
     # plunging index curve with a shaded fall
@@ -420,13 +421,13 @@ def art_chips():
     a.circle(pts[-1][0], pts[-1][1], 0.035, fill=CORAL, outline=WHITE, width=1.2)
     # the source pill annotates the empty upper right of the chart, clear of
     # the falling curve and 12 px left of the scoreboard
-    a.finish("AI SELL-OFF", callout="Asia, Friday’s close", attr="Closing prices",
-             overlay=chips_scoreboard, attr_at=(191, 58, "tr"))
+    a.finish("AI SELL-OFF", callout="US & Asia, Friday", attr="Closing prices",
+             overlay=chips_scoreboard, attr_at=(181, 58, "tr"))
 
 
-# ---- 4. UK-EU reset --------------------------------------------------------
+# ---- 5. UK-EU reset --------------------------------------------------------
 def art_euuk():
-    a = Art("art_04.png", GRID, (214, 228, 240), GRID_BAND)
+    a = Art("art_05.png", GRID, (214, 228, 240), GRID_BAND)
     with a.background():
         a.rect(0, 0, 1, 1, fill=(214, 228, 240), outline=None)
     # v13: the whole ceremony stands on the back of the plaza (y <= 0.58) so
@@ -450,9 +451,9 @@ def art_euuk():
     a.finish("UK–EU DEAL", attr="Agreed · Reuters")
 
 
-# ---- 5. COP31 --------------------------------------------------------------
+# ---- 6. COP31 --------------------------------------------------------------
 def art_cop31():
-    a = Art("art_05.png", GRID, (244, 196, 116), GRID_BAND)
+    a = Art("art_06.png", GRID, (244, 196, 116), GRID_BAND)
     with a.background():
         a.rect(0, 0, 1, 0.74, fill=(246, 204, 128), outline=None)
         a.rect(0, 0.74, 1, 1, fill=(44, 132, 150), outline=None)
@@ -475,9 +476,9 @@ def art_cop31():
     a.finish("COP31: NO DEAL", attr="Ongoing · UN News")
 
 
-# ---- 6. Missile over Poland ------------------------------------------------
+# ---- 7. Missile over Poland ------------------------------------------------
 def art_poland():
-    a = Art("art_06.png", GRID, (190, 206, 222), GRID_BAND)
+    a = Art("art_07.png", GRID, (190, 206, 222), GRID_BAND)
     with a.background():
         a.gradient((150, 172, 200), (226, 228, 222), 0, 0.68, 14)
         # farmland strips
@@ -511,146 +512,191 @@ def art_poland():
     a.finish("POLAND: MISSILE", attr="PM says · Guardian")
 
 
-# ---- 7. Iraqi army enters Jurf al-Sakher ----------------------------------
-def art_iraq():
-    a = Art("art_07.png", GRID, (230, 200, 150), GRID_BAND)
-    with a.background():
-        a.gradient((236, 206, 150), (246, 226, 186), 0, 0.62, 12)
-        a.rect(0, 0.62, 1, 1, fill=(214, 180, 124), outline=None)
-    # palms
-    for x, base in ((0.08, 0.64), (0.9, 0.58)):
-        a.line([(x, base), (x + 0.01, 0.2)], (110, 80, 50), 2.6)
-        for ang in (-150, -110, -70, -30):
-            t = math.radians(ang)
-            a.line([(x + 0.01, 0.2), (x + 0.01 + 0.07 * math.cos(t), 0.2 - 0.2 * math.sin(t) * -1 + 0.0)], (60, 120, 70), 2.4)
-    # compound wall and gate
-    # v13: compound wall ends at y = 0.58; the vehicle and troops advance from
-    # the left, leaving the gate road clear for the source pill
-    a.rect(0.3, 0.28, 0.98, 0.58, fill=(196, 168, 120), outline=INK, width=1.2)
-    for k in range(9):
-        a.rect(0.3 + k * 0.077, 0.24, 0.335 + k * 0.077, 0.28, fill=(196, 168, 120), outline=INK, width=0.8)
-    a.rect(0.56, 0.36, 0.72, 0.58, fill=(70, 60, 50), outline=INK, width=1.2)
-    # Iraqi flag on the gate (stripes, green script mark)
-    flagpole(a, 0.64, 0.005, 0.26)
-    a.rect(0.64, 0.02, 0.78, 0.07, fill=(206, 17, 38), outline=None)
-    a.rect(0.64, 0.07, 0.78, 0.12, fill=WHITE, outline=None)
-    a.rect(0.64, 0.12, 0.78, 0.17, fill=INK, outline=None)
-    a.rect(0.64, 0.02, 0.78, 0.17, fill=None, outline=INK, width=0.8)
-    a.line([(0.685, 0.1), (0.7, 0.09), (0.715, 0.1), (0.735, 0.09)], (0, 122, 61), 1.2)  # stylised script
-    # armoured vehicle and troops moving in
-    a.rrect(0.03, 0.62, 0.33, 0.84, r=4, fill=(150, 140, 96), outline=INK, width=1.2)
-    a.rect(0.11, 0.52, 0.23, 0.62, fill=(130, 122, 84), outline=INK, width=1.1)
-    a.line([(0.23, 0.56), (0.36, 0.52)], INK, 2)
-    for x in (0.07, 0.14, 0.21, 0.28):
-        a.circle(x, 0.88, 0.06, fill=INK, outline=None)
-    for x in (0.37, 0.415, 0.46):
-        person(a, x, 0.94, 0.3, fill=(84, 90, 60))
-    a.finish("IRAQ: ARMY IN", attr="Officials · Reuters")
+def disc_pts(a: Art, cx, cy, r, t0, t1, n=48):
+    """Points on a circle of radius r (fraction of scene height), angles in degrees
+    measured anticlockwise from east, so arcs stay round on the wide card."""
+    out = []
+    for i in range(n + 1):
+        t = math.radians(t0 + (t1 - t0) * i / n)
+        out.append((cx + r * math.cos(t) * a.H / a.W, cy - r * math.sin(t)))
+    return out
 
 
-# ---- 8. Italy general strike -----------------------------------------------
-def art_italy():
-    a = Art("art_08.png", GRID, (238, 222, 196), GRID_BAND)
-    with a.background():
-        a.rect(0, 0, 1, 1, fill=(244, 226, 196), outline=None)
-    # v13: the palazzo ends at y = 0.58 and the march fills the left of the
-    # street, so the source pill sits on the empty right-hand pavement
-    a.rect(0.52, 0.06, 0.98, 0.58, fill=(222, 192, 150), outline=INK, width=1.2)
-    for row in range(2):
-        for k in range(7):
-            x = 0.545 + k * 0.062
-            y = 0.13 + row * 0.22
-            a.rrect(x, y, x + 0.035, y + 0.12, r=6, fill=(150, 112, 80), outline=None)
-    # Italian flag
-    flagpole(a, 0.04, 0.04, 0.4)
-    for k, col in enumerate(((0, 146, 70), WHITE, (206, 43, 55))):
-        a.rect(0.04 + k * 0.045, 0.05, 0.085 + k * 0.045, 0.24, fill=col, outline=None)
-    a.rect(0.04, 0.05, 0.175, 0.24, fill=None, outline=INK, width=0.8)
-    # stopped bus
-    a.rrect(0.2, 0.3, 0.5, 0.66, r=4, fill=(230, 160, 40), outline=INK, width=1.3)
-    for k in range(3):
-        a.rect(0.225 + k * 0.09, 0.36, 0.285 + k * 0.09, 0.48, fill=(190, 220, 236), outline=None)
-    a.circle(0.27, 0.68, 0.07, fill=INK, outline=None)
-    a.circle(0.44, 0.68, 0.07, fill=INK, outline=None)
-    a.rect(0.24, 0.53, 0.46, 0.61, fill=CRIMSON, outline=None)
-    # marchers with red flags
-    with a.background():
-        a.rect(0, 0.74, 1, 1, fill=(196, 176, 150), outline=None)
-    for i in range(8):
-        person(a, 0.035 + i * 0.07, 0.99, 0.24 + (i % 3) * 0.03, fill=(40, 40, 50))
-    for x in (0.08, 0.27, 0.46):
-        a.line([(x, 0.8), (x, 0.5)], INK, 1.2)
-        a.poly([(x, 0.5), (x + 0.08, 0.55), (x, 0.6)], fill=RED, outline=None)
-    a.finish("ITALY: STRIKE", attr="Reported · AP")
+# ---- 4. Nvidia: SEC accounting probe ---------------------------------------
+NV_GREEN = (118, 185, 0)
 
 
-# ---- 9. Japan CPI ----------------------------------------------------------
-def art_japan():
-    a = Art("art_09.png", GRID, (246, 238, 226), GRID_BAND)
+def art_nvidia():
+    a = Art("art_04.png", GRID, (20, 28, 44), GRID_BAND)
     with a.background():
-        a.rect(0, 0, 1, 1, fill=(246, 238, 226), outline=None)
+        a.rect(0, 0, 1, 1, fill=(20, 28, 44), outline=None)
         for k in range(1, 5):
-            a.line([(0.46, k * 0.2), (0.98, k * 0.2)], (220, 208, 190), 1)
-    # rising sun disc
-    a.circle(0.2, 0.36, 0.26, fill=(188, 0, 45), outline=None)
-    # shopping basket with produce
-    a.circle(0.12, 0.64, 0.09, fill=(232, 80, 50), outline=INK, width=1)
-    a.circle(0.22, 0.62, 0.1, fill=(120, 170, 60), outline=INK, width=1)
-    a.rrect(0.16, 0.5, 0.2, 0.62, r=2, fill=(250, 250, 244), outline=INK, width=1)
-    a.circle(0.3, 0.64, 0.08, fill=(240, 190, 60), outline=INK, width=1)
-    a.poly([(0.04, 0.68), (0.38, 0.68), (0.34, 0.96), (0.08, 0.96)], fill=(176, 120, 64), outline=INK, width=1.3)
-    for k in range(4):
-        a.line([(0.1 + k * 0.075, 0.7), (0.12 + k * 0.065, 0.94)], (130, 84, 44), 1.1)
-    # rising CPI bars and arrow
-    # v13: the CPI bars stand on a baseline at y = 0.58, so the source pill
-    # sits under the chart instead of across its bars
-    base, k = 0.58, 0.72
-    vals = (0.3, 0.38, 0.34, 0.46, 0.54, 0.62, 0.72)
-    for i, v in enumerate(vals):
-        x = 0.48 + i * 0.07
-        col = CRIMSON if i == len(vals) - 1 else (90, 100, 116)
-        a.rect(x, base - v * k, x + 0.05, base, fill=col, outline=None)
-    a.line([(0.5, 0.3), (0.66, 0.22), (0.78, 0.18), (0.9, 0.06)], INK, 2.2)
-    a.poly([(0.95, 0.0), (0.86, 0.06), (0.93, 0.12)], fill=INK, outline=None)
-    a.line([(0.44, base), (0.99, base)], INK, 1.4)
-    a.finish("JAPAN: +2.3%", attr="Official data · MIC")
+            a.line([(0.36, 0.14 + k * 0.17), (0.7, 0.14 + k * 0.17)], (38, 50, 72), 1)
+    # microchip: dark package, green die, pins on all four sides (left half)
+    x0, y0, x1, y1 = 0.07, 0.3, 0.29, 0.86
+    for k in range(5):
+        t = 0.36 + k * 0.11
+        a.line([(x0 - 0.035, t), (x0, t)], (190, 198, 210), 1.6)
+        a.line([(x1, t), (x1 + 0.035, t)], (190, 198, 210), 1.6)
+        u = x0 + 0.03 + k * 0.04
+        a.line([(u, y0 - 0.09), (u, y0)], (190, 198, 210), 1.6)
+        a.line([(u, y1), (u, y1 + 0.09)], (190, 198, 210), 1.6)
+    a.rrect(x0, y0, x1, y1, r=3, fill=(48, 56, 70), outline=(190, 198, 210), width=1.2)
+    a.rrect(x0 + 0.05, y0 + 0.14, x1 - 0.05, y1 - 0.14, r=2, fill=NV_GREEN, outline=None)
+    # share price falling hard, from top left of the chart to a red arrowhead
+    pts = [(0.36, 0.2), (0.42, 0.17), (0.47, 0.28), (0.52, 0.25), (0.57, 0.4), (0.61, 0.36), (0.66, 0.5)]
+    a.line(pts, (236, 52, 52), 2.6)
+    a.poly([(0.69, 0.58), (0.62, 0.5), (0.68, 0.44)], fill=(236, 52, 52), outline=None)
+    # SEC filing: white page, text lines, navy seal and a magnifier over it
+    a.poly([(0.74, 0.16), (0.9, 0.16), (0.95, 0.26), (0.95, 0.56), (0.74, 0.56)], fill=WHITE, outline=INK, width=1.1)
+    a.poly([(0.9, 0.16), (0.9, 0.26), (0.95, 0.26)], fill=(210, 214, 222), outline=INK, width=0.8)
+    for k in range(3):
+        a.line([(0.77, 0.3 + k * 0.07), (0.88 - 0.03 * (k % 2), 0.3 + k * 0.07)], GREY, 1)
+    a.circle(0.8, 0.49, 0.045, fill=(27, 42, 65), outline=None)
+    a.circle(0.885, 0.43, 0.09, fill=None, outline=GOLD, width=1.8)
+    a.line([(0.905, 0.5), (0.94, 0.57)], GOLD, 2.2)
+    a.finish("NVIDIA: SEC PROBE", attr="Reported · Reuters")
 
 
-# ---- 10. Seoul: move to impeach the chief justice -------------------------
-def art_seoul():
-    a = Art("art_10.png", GRID, (204, 220, 236), GRID_BAND)
+# ---- 8. Tanker struck in the Strait of Hormuz ------------------------------
+def art_hormuz():
+    a = Art("art_08.png", GRID, (18, 78, 88), GRID_BAND)
     with a.background():
-        a.gradient((176, 200, 228), (232, 238, 244), 0, 0.8, 12)
-        a.rect(0, 0.8, 1, 1, fill=(186, 184, 176), outline=None)
-    # court building: pediment, columns, steps
-    # v13: the court stands on the left and the motion and gavel sit high on
-    # the right, so the source pill lies on the open forecourt
-    a.poly([(0.03, 0.26), (0.24, 0.04), (0.45, 0.26)], fill=(236, 232, 222), outline=INK, width=1.2)
-    a.rect(0.045, 0.26, 0.435, 0.32, fill=(226, 222, 210), outline=INK, width=1)
-    for k in range(4):
-        x = 0.075 + k * 0.095
-        a.rect(x, 0.32, x + 0.04, 0.72, fill=(244, 240, 232), outline=INK, width=0.8)
-    a.rect(0.025, 0.72, 0.44, 0.78, fill=(214, 208, 196), outline=INK, width=1)
-    a.rect(0.01, 0.78, 0.455, 0.84, fill=(200, 194, 182), outline=INK, width=1)
-    # scales of justice on pediment
-    a.circle(0.24, 0.18, 0.04, fill=GOLD, outline=INK, width=0.8)
-    # impeachment motion paper with red seal
-    a.poly([(0.52, 0.06), (0.74, 0.03), (0.76, 0.56), (0.54, 0.58)], fill=WHITE, outline=INK, width=1.2)
-    for k in range(4):
-        y = 0.13 + k * 0.08
-        a.line([(0.56, y), (0.72, y - 0.015)], GREY, 1.1)
-    a.circle(0.65, 0.46, 0.08, fill=None, outline=CRIMSON, width=2.2)
-    a.circle(0.65, 0.46, 0.04, fill=CRIMSON, outline=None)
-    # gavel, raised over its sound block
-    a.line([(0.83, 0.5), (0.93, 0.22)], (110, 70, 40), 3)
-    a.rrect(0.86, 0.06, 0.98, 0.24, r=3, fill=(130, 84, 48), outline=INK, width=1)
-    a.rrect(0.8, 0.5, 0.96, 0.58, r=2, fill=(110, 70, 40), outline=INK, width=1)
-    a.finish("SEOUL: IMPEACH", attr="Party vote · Herald")
+        a.gradient((96, 118, 138), (214, 170, 128), 0, 0.42)
+        # Musandam / Oman coast: dry mountains along the far shore
+        a.poly([(0.5, 0.42), (0.6, 0.3), (0.68, 0.34), (0.76, 0.24), (0.86, 0.31), (0.94, 0.27),
+                (1, 0.3), (1, 0.44), (0.5, 0.44)], fill=(150, 116, 86), outline=None)
+        a.rect(0, 0.42, 1, 1, fill=(18, 78, 88), outline=None)
+        for k in range(4):
+            y = 0.56 + k * 0.1
+            a.line([(0.62 + 0.05 * (k % 2), y), (0.8 + 0.05 * (k % 2), y)], (52, 116, 124), 1)
+    # smoke drifting up and right from the hit, then the flames on deck
+    for cx, cy, r, g in ((0.39, 0.34, 0.1, 96), (0.46, 0.26, 0.11, 112), (0.54, 0.22, 0.09, 128)):
+        a.circle(cx, cy, r, fill=(g, g, g + 6), outline=None)
+    a.poly([(0.27, 0.52), (0.3, 0.36), (0.33, 0.44), (0.36, 0.26), (0.39, 0.42), (0.42, 0.34),
+            (0.44, 0.52)], fill=ORANGE, outline=None)
+    a.poly([(0.31, 0.52), (0.34, 0.42), (0.36, 0.36), (0.38, 0.44), (0.4, 0.52)], fill=GOLD, outline=None)
+    # oil tanker: long red-and-black hull, deck pipes, stern superstructure
+    a.poly([(0.04, 0.52), (0.54, 0.52), (0.505, 0.7), (0.07, 0.7)], fill=(150, 34, 34), outline=INK, width=1.2)
+    a.rect(0.065, 0.62, 0.515, 0.7, fill=(32, 30, 34), outline=None)
+    a.line([(0.2, 0.5), (0.5, 0.5)], (210, 210, 204), 1.4)
+    a.rect(0.06, 0.32, 0.16, 0.52, fill=(236, 232, 222), outline=INK, width=1)
+    a.rect(0.075, 0.37, 0.145, 0.41, fill=(60, 90, 120), outline=None)
+    a.rect(0.12, 0.22, 0.145, 0.32, fill=(40, 40, 44), outline=None)
+    a.finish("HORMUZ: TANKER", attr="Alert · UKMTO")
 
 
-# ---- 11. Kenya's first oil well -------------------------------------------
+# ---- 9. Pakistani minister in New Delhi ------------------------------------
+PK_GREEN = (1, 102, 56)
+IN_SAFFRON, IN_GREEN, IN_NAVY = (255, 153, 51), (19, 136, 8), (6, 3, 141)
+
+
+def art_indiapak():
+    a = Art("art_09.png", GRID, (226, 236, 244), GRID_BAND)
+    with a.background():
+        a.gradient((198, 220, 238), (242, 238, 226), 0, 0.78)
+        a.rect(0, 0.78, 1, 1, fill=(222, 210, 184), outline=None)
+    # Pakistan flag on the left: white hoist band, green field, crescent and star
+    flagpole(a, 0.04, 0.16, 0.96)
+    a.rect(0.04, 0.18, 0.09, 0.5, fill=WHITE, outline=None)
+    a.rect(0.09, 0.18, 0.29, 0.5, fill=PK_GREEN, outline=None)
+    a.circle(0.19, 0.34, 0.1, fill=WHITE, outline=None)
+    a.circle(0.205, 0.32, 0.085, fill=PK_GREEN, outline=None)
+    a.star(0.225, 0.3, 0.04, fill=WHITE)
+    a.rect(0.04, 0.18, 0.29, 0.5, fill=None, outline=INK, width=0.8)
+    # India flag on the right: saffron, white, green with the navy chakra
+    flagpole(a, 0.66, 0.16, 0.6)
+    a.rect(0.62, 0.58, 0.7, 0.62, fill=(120, 110, 96), outline=None)
+    for k, col in enumerate((IN_SAFFRON, WHITE, IN_GREEN)):
+        a.rect(0.66, 0.18 + k * 0.107, 0.92, 0.287 + k * 0.107, fill=col, outline=None)
+    a.circle(0.79, 0.34, 0.045, fill=None, outline=IN_NAVY, width=1)
+    a.circle(0.79, 0.34, 0.012, fill=IN_NAVY, outline=None)
+    a.rect(0.66, 0.18, 0.92, 0.5, fill=None, outline=INK, width=0.8)
+    # SCO meeting arch between them, with a dotted diplomatic bridge over it
+    a.rect(0.33, 0.52, 0.37, 0.96, fill=(176, 66, 52), outline=INK, width=0.8)
+    a.rect(0.5, 0.52, 0.54, 0.96, fill=(176, 66, 52), outline=INK, width=0.8)
+    a.line(disc_pts(a, 0.435, 0.58, 0.3, 0, 180, 32), (176, 66, 52), 3)
+    a.rect(0.37, 0.5, 0.5, 0.57, fill=(27, 42, 65), outline=None)
+    for i in range(9):
+        t = (i + 0.5) / 9
+        x = 0.31 + (0.63 - 0.31) * t
+        y = 0.24 - 0.09 * math.sin(math.pi * t)
+        a.circle(x, y, 0.025, fill=GOLD, outline=None)
+    a.finish("INDIA–PAKISTAN", attr="SCO meet · PTI")
+
+
+# ---- 11. Pancreatic cancer trial -------------------------------------------
+TEAL = (23, 128, 120)
+
+
+def art_cancer():
+    a = Art("art_11.png", GRID, (230, 244, 241), GRID_BAND)
+    with a.background():
+        a.rect(0, 0, 1, 1, fill=(230, 244, 241), outline=None)
+        for k in range(1, 4):
+            a.line([(0.48, 0.58 - k * 0.14), (0.97, 0.58 - k * 0.14)], (204, 226, 222), 1)
+    # capsule, tilted: teal half and white half
+    cx, cy, L, R = 0.21, 0.56, 0.13, 0.16
+    ang = math.radians(-28)
+    deg = math.degrees(ang)
+    ux, uy = math.cos(ang) * a.H / a.W, -math.sin(ang)
+
+    def cap(sign, col):
+        """Half capsule: straight edge through the centre, round end at sign * L."""
+        ex, ey = cx + sign * L * ux, cy + sign * L * uy
+        t0 = deg + 90 if sign > 0 else deg - 90
+        arc = disc_pts(a, ex, ey, R, t0, t0 - 180, 24)
+        mid = disc_pts(a, cx, cy, R, t0 - 180, t0, 1)   # the two centre-line ends
+        a.poly([mid[1]] + arc + [mid[0]], fill=col, outline=INK, width=1.1)
+
+    cap(-1, WHITE)
+    cap(1, TEAL)
+    for dx, dy in ((0.05, 0.08), (0.02, 0.14), (0.31, 0.22), (0.36, 0.3)):
+        a.circle(dx, dy + 0.12, 0.02, fill=(120, 190, 180), outline=None)
+    # response-rate bars rising to the 60.7% bar (green), on a baseline at y = 0.58
+    base = 0.58
+    for i, h in enumerate((0.12, 0.18, 0.24, 0.44)):
+        x = 0.52 + i * 0.11
+        col = (34, 160, 90) if i == 3 else (150, 176, 172)
+        a.rect(x, base - h, x + 0.07, base, fill=col, outline=None)
+    a.line([(0.55, 0.36), (0.66, 0.3), (0.77, 0.24), (0.88, 0.06)], (34, 160, 90), 1.8)
+    a.poly([(0.915, 0.0), (0.85, 0.05), (0.905, 0.1)], fill=(34, 160, 90), outline=None)
+    a.line([(0.48, base), (0.98, base)], INK, 1.4)
+    a.finish("CANCER: 60.7%", attr="Trial data · OncLive")
+
+
+# ---- 12. Argentina country risk --------------------------------------------
+AR_BLUE = (116, 172, 223)
+
+
+def art_argentina():
+    a = Art("art_12.png", GRID, AR_BLUE, GRID_BAND)
+    with a.background():
+        a.rect(0, 0, 1, 0.34, fill=AR_BLUE, outline=None)
+        a.rect(0, 0.34, 1, 0.67, fill=WHITE, outline=None)
+        a.rect(0, 0.67, 1, 1, fill=AR_BLUE, outline=None)
+    # Sun of May on the white stripe, right of the gauge
+    a.star(0.74, 0.46, 0.1, fill=(246, 180, 14), points=16, inner=0.62)
+    a.circle(0.74, 0.46, 0.055, fill=(252, 196, 30), outline=(176, 110, 20), width=0.8)
+    # country-risk gauge: dark dial with green, amber and red bands; the
+    # needle has swung past the 1,000 mark into the red
+    cx, cy, R = 0.26, 0.9, 0.6
+    a.poly(disc_pts(a, cx, cy, R, 0, 180), fill=(26, 34, 50), outline=INK, width=1.2)
+    for t0, t1, col in ((180, 120, (60, 170, 90)), (120, 70, (240, 180, 40)), (70, 0, (226, 40, 40))):
+        a.line(disc_pts(a, cx, cy, R - 0.1, t0, t1, 20), col, 3.4)
+    # 1,000-point threshold tick, then the needle beyond it
+    t = math.radians(70)
+    a.line([(cx + (R - 0.2) * math.cos(t) * a.H / a.W, cy - (R - 0.2) * math.sin(t)),
+            (cx + (R - 0.01) * math.cos(t) * a.H / a.W, cy - (R - 0.01) * math.sin(t))], WHITE, 1.6)
+    t = math.radians(34)
+    a.line([(cx, cy), (cx + (R - 0.12) * math.cos(t) * a.H / a.W, cy - (R - 0.12) * math.sin(t))], (255, 70, 60), 2.4)
+    a.circle(cx, cy, 0.07, fill=(255, 70, 60), outline=WHITE, width=1)
+    a.finish("ARGENTINA: 1,000+", attr="Bonds · Bloomberg")
+
+
+# ---- 10. Kenya's first oil well -------------------------------------------
 def art_kenya():
-    a = Art("art_11.png", GRID, (240, 170, 90), GRID_BAND)
+    a = Art("art_10.png", GRID, (240, 170, 90), GRID_BAND)
     # v13: the rig stands left of centre and a far acacia sits on the
     # horizon, so the source pill lies on open ground at the bottom right
     with a.background():
@@ -691,36 +737,6 @@ def art_kenya():
     a.finish("KENYA: OIL", attr="Spudded · The Star")
 
 
-# ---- 12. Bukele third-term bid --------------------------------------------
-def art_bukele():
-    a = Art("art_12.png", GRID, (190, 220, 240), GRID_BAND)
-    with a.background():
-        a.gradient((150, 196, 232), (226, 238, 246), 0, 0.7, 12)
-        # San Salvador volcano silhouette
-        a.poly([(0.3, 0.72), (0.56, 0.2), (0.64, 0.18), (0.94, 0.72)], fill=(96, 118, 110), outline=None)
-        a.poly([(0.52, 0.28), (0.56, 0.2), (0.64, 0.18), (0.68, 0.28), (0.6, 0.26)], fill=(130, 150, 140), outline=None)
-        a.rect(0, 0.72, 1, 1, fill=(120, 150, 96), outline=None)
-    # Salvadoran flag (blue-white-blue)
-    flagpole(a, 0.06, 0.06, 0.94)
-    for k, col in enumerate(((0, 71, 171), WHITE, (0, 71, 171))):
-        a.rect(0.06, 0.06 + k * 0.08, 0.26, 0.14 + k * 0.08, fill=col, outline=None)
-    a.rect(0.06, 0.06, 0.26, 0.3, fill=None, outline=INK, width=0.8)
-    a.poly([(0.145, 0.205), (0.16, 0.155), (0.175, 0.205)], fill=(0, 122, 61), outline=GOLD, width=0.6)  # emblem
-    # ballot box with ballot going in
-    a.rect(0.34, 0.5, 0.66, 0.94, fill=WHITE, outline=INK, width=1.4)
-    a.rect(0.34, 0.5, 0.66, 0.58, fill=(0, 71, 171), outline=INK, width=1)
-    a.rect(0.44, 0.52, 0.56, 0.555, fill=INK, outline=None)
-    a.poly([(0.45, 0.2), (0.57, 0.18), (0.56, 0.54), (0.46, 0.54)], fill=PAPER, outline=INK, width=1.1)
-    a.line([(0.48, 0.3), (0.52, 0.36), (0.55, 0.26)], CRIMSON, 1.8)
-    # filing folder / tribunal stamp
-    # v13: the candidacy folder rests left of the ballot box, leaving the
-    # bottom right clear for the source pill
-    a.rrect(0.1, 0.62, 0.3, 0.92, r=3, fill=(236, 214, 150), outline=INK, width=1.1)
-    a.line([(0.13, 0.72), (0.27, 0.72)], GREY, 1)
-    a.line([(0.13, 0.8), (0.27, 0.8)], GREY, 1)
-    a.finish("BUKELE: 3RD BID", attr="Filed · AP")
-
-
 # ---- 13. Phillips century v India -----------------------------------------
 def art_phillips():
     a = Art("art_13.png", GRID, (70, 140, 80), GRID_BAND)
@@ -758,8 +774,8 @@ def art_phillips():
     a.finish("PHILLIPS: 118", attr="Scorecard · ICC")
 
 
-ART_FUNCS = [art_kyiv, art_akvan, art_chips, art_euuk, art_cop31, art_poland, art_iraq,
-             art_italy, art_japan, art_seoul, art_kenya, art_bukele, art_phillips]
+ART_FUNCS = [art_kyiv, art_akvan, art_chips, art_nvidia, art_euuk, art_cop31, art_poland,
+             art_hormuz, art_indiapak, art_kenya, art_cancer, art_argentina, art_phillips]
 
 
 def build_all():
