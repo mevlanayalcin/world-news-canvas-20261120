@@ -1,4 +1,4 @@
-"""Editorial illustrations for the Friday 20 November 2026 front page (v11).
+"""Editorial illustrations for the Friday 20 November 2026 front page (v8).
 
 Each picture has two layers:
 
@@ -20,7 +20,7 @@ from __future__ import annotations
 import math
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont
+from PIL import Image, ImageDraw, ImageFont
 
 BASE = Path(__file__).resolve().parent
 ASSETS = BASE / "assets"
@@ -133,35 +133,10 @@ class Art:
             ya = y0 + (y1 - y0) * i / steps
             self.rect(0, ya, 1, ya + (y1 - y0) / steps + 0.002, fill=col, outline=None)
 
-    def _light(self, mask: Image.Image, color, blur: float):
-        mask = mask.filter(ImageFilter.GaussianBlur(max(1.0, blur)))
-        self.im.paste(Image.new("RGB", self.im.size, color), (0, 0), mask)
-        self.d = ImageDraw.Draw(self.im)
-
-    def glow(self, cx, cy, rx, ry, color, alpha=255, blur=0.5):
-        """Soft light: a blurred ellipse (radii in scene-height fractions) blended in."""
-        x, y, ax, ay = self.X(cx), self.Y(cy), rx * self.H, ry * self.H
-        mask = Image.new("L", self.im.size, 0)
-        ImageDraw.Draw(mask).ellipse([x - ax, y - ay, x + ax, y + ay], fill=alpha)
-        self._light(mask, color, min(ax, ay) * blur)
-
-    def glow_line(self, pts, color, width, alpha=255, blur=3.0):
-        mask = Image.new("L", self.im.size, 0)
-        ImageDraw.Draw(mask).line(self.P(pts), fill=alpha, width=self.lw(width), joint="curve")
-        self._light(mask, color, blur * self.u * 2)
-
-    def tint_poly(self, pts, color, alpha):
-        """A translucent fill, so whatever is behind still shows through."""
-        mask = Image.new("L", self.im.size, 0)
-        ImageDraw.Draw(mask).polygon(self.P(pts), fill=alpha)
-        self.im.paste(Image.new("RGB", self.im.size, color), (0, 0), mask)
-        self.d = ImageDraw.Draw(self.im)
-
     # ---- printed-size typography ------------------------------------------
     def finish(self, badge: str, callout: str | None = None, attr: str | None = None,
-               overlay=None, attr_right: int | None = None):
+               overlay=None):
         out = self.im.resize(self.size, Image.LANCZOS)
-        out = ImageEnhance.Contrast(out).enhance(1.06)   # crisper focal shapes at 300 px
         d = ImageDraw.Draw(out)
         w, h = self.size
         if self.lead:
@@ -176,9 +151,7 @@ class Art:
         if overlay:
             overlay(self, d)
         if attr:
-            if self.lead and attr_right:   # right edge at attr_right px, clear of the focal shapes
-                self._pill(d, attr, attr_right, h - 5, 10.5, WHITE, INK, LATO_BLACK, "br", "attr")
-            elif self.lead:
+            if self.lead:
                 self._pill(d, attr, pad, h - 5, 10.5, WHITE, INK, LATO_BLACK, "bl", "attr")
             else:
                 self._pill(d, attr, w - 4, h - 4, 10, WHITE, INK, LATO_BOLD, "br", "attr")
@@ -252,189 +225,89 @@ def flagpole(a: Art, x, y_top, y_bot):
 # ---- printed-size map and scene labels (leads 1 and 2) ---------------------
 def kyiv_labels(a: Art, d: ImageDraw.ImageDraw):
     """The barrage size, in quiet cream type on the night sky at top right."""
-    a._pill(d, "~110 missiles · 400 drones", a.size[0] - 4, 4, 10.5, (240, 230, 212), None,
+    a._pill(d, "~110 missiles · 400 drones", a.size[0] - 4, 4, 10.5, (236, 226, 208), None,
             LATO_BLACK, "tr", "geo")
 
 
-AKVAN_EYE_Y = 0.52
-
-
-def coast_x(yf: float) -> float:
-    """Odisha coastline (fraction of width) at scene height yf: land west, sea east."""
-    return 0.64 - 0.46 * yf + 0.015 * math.sin(yf * 14)
-
-
 def akvan_labels(a: Art, d: ImageDraw.ImageDraw):
-    """Name the landfall point (on the land side) and the sea."""
-    dx, dy = a.X(coast_x(AKVAN_EYE_Y)) / 2, a.Y(AKVAN_EYE_Y) / 2   # landfall at printed size
-    a._pill(d, "Gopalpur", round(dx - 9), round(dy - 7), 10.5, INK, PAPER, LATO_BLACK, "tr", "geo")
-    a._pill(d, "BAY OF BENGAL", a.size[0] - 4, 4, 10, WHITE, (10, 26, 48), LATO_BLACK, "tr", "geo")
+    """Name the landfall point and the sea so the map reads without its caption."""
+    dx, dy = a.X(0.4) / 2, a.Y(0.36) / 2          # landfall dot at printed size
+    a._pill(d, "Gopalpur", round(dx - 6), round(dy + 7), 10.5, INK, PAPER, LATO_BLACK, "tl", "geo")
+    a._pill(d, "BAY OF BENGAL", a.size[0] - 4, 4, 10, INK, None, LATO_BLACK, "tr", "geo")
 
 
 # ---- 1. Kyiv bridges -------------------------------------------------------
-KYIV_SIL = (12, 12, 28)
-
-
-def onion(a: Art, x, yb, s, fill=(226, 168, 52)):
-    """An onion dome on a short drum; yb is the drum foot, s the dome height (H fractions)."""
-    hw = s * 0.42 * a.H / a.W
-    a.rect(x - hw * 0.7, yb - s * 0.45, x + hw * 0.7, yb, fill=KYIV_SIL, outline=None)
-    base = yb - s * 0.45
-    left, right = [], []
-    for k in range(25):
-        t = k / 24
-        w = hw * (0.62 + 0.45 * math.sin(math.pi * t / 0.7)) if t < 0.7 else hw * 0.62 * (1 - t) / 0.3
-        y = base - s * t
-        left.append((x - w, y))
-        right.append((x + w, y))
-    a.poly(left + right[::-1], fill=fill, outline=KYIV_SIL, width=1)
-    a.line([(x, base - s), (x, base - s * 1.35)], KYIV_SIL, 1.3)
-    a.line([(x - hw * 0.35, base - s * 1.2), (x + hw * 0.35, base - s * 1.2)], KYIV_SIL, 1.3)
-
-
-def arch_bridge(a: Art, y, th, ah, n, col, rib, gap=None):
-    """A deck over n arches springing from piers at the water line y + th + ah."""
-    yw = y + th + ah
-    span = 1.08 / n
-    for i in range(n):
-        sx0 = -0.04 + i * span
-        sx1 = sx0 + span
-        xc, hs = (sx0 + sx1) / 2, span * 0.46
-        box = [a.X(xc - hs), a.Y(y + th), a.X(xc + hs), a.Y(yw + ah)]
-        a.d.arc(box, 180, 360, fill=col, width=a.lw(rib))
-        for k in range(1, 6):
-            xk = xc - hs + 2 * hs * k / 6
-            yk = yw - ah * math.sqrt(max(0.0, 1 - ((xk - xc) / hs) ** 2))
-            a.line([(xk, y + th), (xk, yk)], col, rib * 0.4)
-        a.rect(sx0 - 0.007, yw - 0.02, sx0 + 0.007, yw + 0.02, fill=col, outline=KYIV_SIL, width=0.6)
-    parts = [(0, 1)] if gap is None else [(0, gap[0]), (gap[1], 1)]
-    for x0, x1 in parts:
-        a.rect(x0, y, x1, y + th, fill=col, outline=KYIV_SIL, width=0.8)
-        a.line([(x0, y), (x1, y)], (255, 186, 112), 1.0)        # lit top edge
-    if gap:   # sagging broken ends and debris in the water
-        a.poly([(gap[0], y), (gap[0] + 0.02, y + th + 0.05), (gap[0], y + th)], fill=col,
-               outline=KYIV_SIL, width=0.8)
-        a.poly([(gap[1], y), (gap[1] - 0.02, y + th + 0.06), (gap[1], y + th)], fill=col,
-               outline=KYIV_SIL, width=0.8)
-
-
-def burst(a: Art, x, y, s, yw):
-    """A glowing impact on a deck at (x, y), with its reflection in the river at yw."""
-    a.glow(x, yw + 0.06 * s, 0.1 * s, 0.26 * s, (255, 120, 50), 130)
-    a.glow(x, y, 0.34 * s, 0.34 * s, (200, 26, 30), 190)
-    a.glow(x, y, 0.18 * s, 0.18 * s, (255, 120, 40), 235)
-    for i in range(12):
-        t = i * math.pi / 6 + 0.13
-        L = (0.2 if i % 2 else 0.13) * s
-        a.line([(x, y), (x + L * math.cos(t) * a.H / a.W, y + L * math.sin(t))], (255, 196, 96), 2.2 * s)
-    a.glow(x, y, 0.08 * s, 0.08 * s, (255, 236, 180), 255, blur=0.35)
-    a.circle(x, y, 0.035 * s, fill=(255, 252, 236), outline=None)
-
-
 def art_kyiv():
-    a = Art("art_01.png", HERO, (14, 18, 46), HERO_BAND)
-    # twilight: indigo overhead, plum, then a crimson-amber horizon
-    a.gradient((12, 16, 44), (88, 38, 80), 0, 0.3)
-    a.gradient((88, 38, 80), (236, 124, 62), 0.3, 0.5)
-    a.glow(0.55, 0.5, 1.6, 0.1, (255, 172, 96), 140)
-    # the Dnipro reflects the sky and darkens toward the viewer
-    a.gradient((128, 58, 72), (10, 12, 32), 0.5, 1.0)
-    # far-bank skyline with the gilded domes (left) and the Lavra bell tower (right)
-    a.poly([(0, 0.5), (0, 0.44), (0.05, 0.44), (0.05, 0.41), (0.1, 0.41), (0.11, 0.45), (0.22, 0.45),
-            (0.23, 0.4), (0.28, 0.4), (0.29, 0.44), (0.36, 0.43), (0.38, 0.39), (0.45, 0.39),
-            (0.46, 0.44), (0.55, 0.45), (0.57, 0.41), (0.64, 0.41), (0.66, 0.45), (0.76, 0.44),
-            (0.78, 0.4), (0.84, 0.4), (0.85, 0.43), (0.96, 0.43), (0.97, 0.4), (1, 0.4), (1, 0.5)],
-           fill=KYIV_SIL, outline=None)
-    a.rect(0.07, 0.36, 0.21, 0.45, fill=KYIV_SIL, outline=None)
-    onion(a, 0.1, 0.37, 0.07)
-    onion(a, 0.14, 0.37, 0.11)
-    onion(a, 0.18, 0.37, 0.07)
-    a.rect(0.885, 0.18, 0.925, 0.42, fill=KYIV_SIL, outline=None)
-    a.rect(0.893, 0.1, 0.917, 0.18, fill=KYIV_SIL, outline=None)
-    onion(a, 0.905, 0.1, 0.08)
-    for k in range(3):                                # lit belfry windows
-        a.rect(0.898, 0.22 + k * 0.06, 0.912, 0.255 + k * 0.06, fill=(255, 196, 110), outline=None)
-    # missile streaks into the three crossings
-    for (x0, y0), (x1, y1) in (((0.8, 0.03), (0.7, 0.5)), ((0.44, 0.03), (0.3, 0.6)),
-                               ((0.64, 0.03), (0.56, 0.76))):
-        a.glow_line([(x0, y0), (x1, y1)], (255, 160, 90), 5, 110)
-        a.line([(x0, y0), (x1, y1)], (255, 232, 200), 1.3)
-    # three arched bridges in depth: far, middle and near (broken)
-    arch_bridge(a, 0.5, 0.022, 0.05, 7, (150, 122, 146), 1.6)
-    arch_bridge(a, 0.6, 0.034, 0.08, 5, (184, 164, 184), 2.4)
-    arch_bridge(a, 0.75, 0.05, 0.1, 3, (222, 212, 222), 3.4, gap=(0.52, 0.6))
-    # river ripples catching the fire
-    for k, (x, y, L) in enumerate(((0.06, 0.95, 0.1), (0.2, 0.9, 0.07), (0.8, 0.93, 0.1),
-                                   (0.9, 0.98, 0.07), (0.38, 0.97, 0.06), (0.7, 0.99, 0.05))):
-        a.line([(x, y), (x + L, y)], (200, 104, 76) if k % 2 else (150, 80, 90), 1.1)
-    burst(a, 0.7, 0.5, 0.62, 0.57)
-    burst(a, 0.3, 0.6, 0.8, 0.72)
-    burst(a, 0.56, 0.76, 1.0, 0.92)
+    a = Art("art_01.png", HERO, (64, 92, 128), HERO_BAND)
+    a.gradient((40, 56, 92), (214, 150, 110), 0, 0.6)
+    # far bank skyline + Lavra bell tower and dome
+    a.poly([(0, 0.5), (0.06, 0.44), (0.12, 0.47), (0.2, 0.4), (0.28, 0.45), (0.36, 0.43),
+            (0.44, 0.48), (0.44, 0.6), (0, 0.6)], fill=(52, 60, 78), outline=None)
+    a.poly([(0.58, 0.6), (0.64, 0.44), (0.86, 0.42), (0.94, 0.48), (1, 0.46), (1, 0.6)],
+           fill=(66, 74, 90), outline=None)
+    a.rect(0.79, 0.3, 0.85, 0.56, fill=(222, 214, 196), outline=INK, width=1.2)
+    a.circle(0.82, 0.29, 0.07, fill=(214, 168, 46), outline=INK, width=1.2)
+    a.line([(0.82, 0.21), (0.82, 0.1)], INK, 1.5)
+    a.line([(0.805, 0.15), (0.835, 0.15)], INK, 1.5)
+    # river Dnipro
+    a.rect(0, 0.6, 1, 1, fill=(36, 74, 108), outline=None)
+    for k in range(3):
+        y = 0.76 + k * 0.08
+        a.line([(0.64 + k * 0.08, y), (0.76 + k * 0.08, y)], (110, 156, 190), 1.2)
+    # three bridges in depth, each struck
+    for k, (y, th, col) in enumerate(((0.55, 0.028, (176, 182, 190)), (0.63, 0.036, (196, 200, 206)),
+                                      (0.73, 0.055, (226, 226, 222)))):
+        if k < 2:
+            a.rect(0, y, 1, y + th, fill=col, outline=INK, width=1)
+            for px in (0.15, 0.35, 0.55, 0.75, 0.95):
+                a.rect(px - 0.006, y + th, px + 0.006, y + th + 0.05 + k * 0.02, fill=(90, 96, 104), outline=None)
+        else:
+            a.poly([(0, y), (0.42, y), (0.46, y + th + 0.03), (0, y + th)], fill=col, outline=INK, width=1.2)
+            a.poly([(0.58, y + 0.02), (1, y), (1, y + th), (0.55, y + th + 0.04)], fill=col, outline=INK, width=1.2)
+            for px in (0.3, 0.75, 0.92):
+                a.rect(px - 0.009, y + th, px + 0.009, 0.97, fill=(80, 86, 96), outline=INK, width=0.8)
+            for dx, dy, s in ((0.47, 0.86, 0.018), (0.5, 0.92, 0.012), (0.53, 0.84, 0.015)):
+                a.rect(dx - s, dy - s, dx + s, dy + s, fill=(90, 90, 96), outline=INK, width=0.8)
+    # missile streaks and blasts on all three crossings
+    a.line([(0.3, 0.02), (0.42, 0.3), (0.5, 0.7)], (255, 230, 190), 2.4)
+    a.line([(0.98, 0.02), (0.8, 0.3), (0.68, 0.6)], (255, 230, 190), 2.0)
+    bx, by = 0.5, 0.7
+    for i in range(12):
+        t = i * math.pi / 6
+        a.line([(bx, by), (bx + 0.06 * math.cos(t) * a.H / a.W, by + 0.13 * math.sin(t))], ORANGE, 3)
+    a.circle(bx, by, 0.075, fill=GOLD, outline=CRIMSON, width=2)
+    a.circle(bx, by, 0.03, fill=WHITE, outline=None)
+    a.circle(0.68, 0.62, 0.045, fill=GOLD, outline=ORANGE, width=1.5)
+    a.circle(0.6, 0.56, 0.035, fill=GOLD, outline=ORANGE, width=1.5)
     a.finish("KYIV", "3 bridges hit", "Officials’ count", overlay=kyiv_labels)
 
 
 # ---- 2. Cyclone Akvan ------------------------------------------------------
 def art_akvan():
-    import numpy as np
-    a = Art("art_02.png", HERO, (10, 26, 48), HERO_BAND)
-    W2, H2 = a.im.size
-    py, px = np.mgrid[0:H2, 0:W2].astype(np.float64)
-    yf = (py - a.oy) / a.H
-    land = px < (0.64 - 0.46 * yf + 0.015 * np.sin(yf * 14)) * W2
-    img = np.zeros((H2, W2, 3))
-    img[:] = (10, 26, 48)
-    img[land] = (60, 74, 54)
-    # radar reflectivity: an eyewall ring plus two spiral bands around the eye
-    ex, ey = a.X(coast_x(AKVAN_EYE_Y)), a.Y(AKVAN_EYE_Y)
-    dx, dy = px - ex, py - ey
-    r = np.hypot(dx, dy) / 2                       # printed px
-    th = np.arctan2(dy, dx)
-    phase = th + 1.7 * np.log(np.maximum(r, 1) / 14)
-    arms = (0.5 + 0.5 * np.cos(2 * phase)) ** 1.6
-    ring = np.exp(-((r - 15) / 5.5) ** 2)
-    outer = np.exp(-r / 70) * np.clip((r - 10) / 8, 0, 1)
-    inten = np.maximum(ring, 1.05 * outer * arms) * np.clip((r - 7) / 3, 0, 1)
-    for lo, col in ((0.16, (40, 150, 80)), (0.34, (238, 206, 56)), (0.55, (248, 132, 34)),
-                    (0.76, (226, 40, 40))):
-        m = inten > lo
-        img[m] = img[m] * 0.1 + np.array(col) * 0.9
-    a.im = Image.fromarray(img.astype(np.uint8), "RGB")
-    a.d = ImageDraw.Draw(a.im)
-    # coast, range rings and eye
-    a.line([(coast_x(t / 40), t / 40) for t in range(-6, 41)] , (240, 230, 196), 1.6)
-    ecx, ecy = coast_x(AKVAN_EYE_Y), AKVAN_EYE_Y
-    for rr in (0.5, 0.9):
-        a.circle(ecx, ecy, rr, fill=None, outline=(70, 110, 150), width=0.8)
-    a.circle(ecx, ecy, 0.05, fill=(10, 26, 48), outline=WHITE, width=1.6)
-    # track from the south-east into the coast, as a bold gold arrow
-    track = [(1.0, 1.02), (0.86, 0.86), (0.7, 0.7)]
-    tip = (ecx + 0.075, ecy + 0.05)
-    ang = math.atan2((tip[1] - track[-1][1]) * a.H, (tip[0] - track[-1][0]) * a.W)
-
-    def off(p, d, s):
-        # d scene-height fractions back along the track, s radians off its axis
-        return (p[0] + d * math.cos(ang + s) * a.H / a.W, p[1] + d * math.sin(ang + s))
-    track.append(off(tip, -0.16, 0))
-    a.line(track, INK, 6.4)
-    a.line(track, GOLD, 3.8)
-    a.poly([tip, off(tip, -0.21, 0.5), off(tip, -0.21, -0.5)], fill=GOLD, outline=INK, width=1.4)
-    for p in track[1:3]:
-        a.circle(p[0], p[1], 0.028, fill=WHITE, outline=INK, width=1)
-    a.circle(ecx, ecy, 0.022, fill=CRIMSON, outline=WHITE, width=1.2)
-    # wind-bent palms on the shore
-    PALM = (8, 12, 10)
-    for x, h, lean in ((0.1, 0.38, 0.02), (0.17, 0.27, 0.016)):
-        top = (x - lean, 1.0 - h)
-        a.line([(x, 1.02), (x - lean * 0.2, 1.0 - h * 0.5), (x - lean * 0.6, 1.0 - h * 0.85), top], PALM, 3.0)
-        # fronds streaming west with the wind: (dx in W fractions, dy, droop)
-        for fx, fy, droop in ((-0.05, -0.02, 0.07), (-0.04, -0.08, 0.04), (-0.035, 0.06, 0.05),
-                              (0.03, -0.06, 0.05), (0.025, 0.04, 0.04)):
-            mid = (top[0] + fx * 0.55, top[1] + fy * 0.55 - 0.02)
-            end = (top[0] + fx, top[1] + fy + droop)
-            a.line([top, mid, end], PALM, 2.4)
-    # the source tag sits between the palms and the track arrow
-    a.finish("CYCLONE AKVAN", "Landfall · 8 am", "Weather office · IMD", overlay=akvan_labels,
-             attr_right=238)
+    a = Art("art_02.png", HERO, SEA, HERO_BAND)
+    a.rect(0, 0, 1, 1, fill=(52, 126, 156), outline=None)
+    # Odisha coast: land on the left, Bay of Bengal on the right
+    a.poly([(0, 0), (0.5, 0), (0.46, 0.18), (0.4, 0.34), (0.34, 0.52), (0.26, 0.72),
+            (0.16, 0.9), (0.1, 1), (0, 1)], fill=(206, 196, 150), outline=INK, width=1.5)
+    a.poly([(0, 0.3), (0.3, 0.3), (0.26, 0.45), (0.18, 0.62), (0.1, 0.8), (0, 0.95)],
+           fill=(150, 176, 112), outline=None)
+    cx, cy = 0.7, 0.5
+    for r, w in ((0.44, 5), (0.33, 4.5), (0.22, 4)):
+        a.arc(cx, cy, r, 20, 300, WHITE, w)
+        a.arc(cx, cy, r - 0.055, 200, 380, (206, 232, 240), w * 0.6)
+    a.circle(cx, cy, 0.06, fill=(60, 120, 150), outline=WHITE, width=2.5)
+    # track arrow to Gopalpur, then weakening
+    a.line([(0.94, 0.98), (0.82, 0.74), (0.7, 0.5), (0.5, 0.36)], GOLD, 2.4)
+    a.poly([(0.43, 0.34), (0.5, 0.29), (0.5, 0.42)], fill=GOLD, outline=None)
+    a.circle(0.4, 0.36, 0.045, fill=CRIMSON, outline=WHITE, width=2)
+    # cyclone shelter with evacuees
+    a.poly([(0.05, 0.62), (0.13, 0.5), (0.21, 0.62)], fill=CRIMSON, outline=INK, width=1.2)
+    a.rect(0.065, 0.62, 0.195, 0.78, fill=PAPER, outline=INK, width=1.2)
+    a.rect(0.115, 0.68, 0.145, 0.78, fill=INK, outline=None)
+    for i, x in enumerate((0.23, 0.26, 0.29)):
+        person(a, x, 0.8, 0.15 - i * 0.012)
+    raindrops(a, 0.55, 0.95, 4, (200, 228, 238), seed=3)
+    a.finish("CYCLONE AKVAN", "Landfall · 8 am", "Weather office · IMD", overlay=akvan_labels)
 
 
 # ---- 3. Asia AI sell-off ---------------------------------------------------
@@ -445,10 +318,10 @@ SCOREBOARD = [("Taipei", "−6.2%"), ("Seoul", "−5.2%"), ("Tokyo", "−5.1%"),
 def chips_scoreboard(a: Art, d: ImageDraw.ImageDraw):
     """Four-market closing board, drawn at printed size beside the chart."""
     x0, y0, x1, y1 = 203, 6, 310, 126
-    d.rounded_rectangle([x0, y0, x1, y1], radius=4, fill=(26, 34, 54), outline=(96, 112, 144), width=1)
+    d.rounded_rectangle([x0, y0, x1, y1], radius=4, fill=(30, 40, 60), outline=(78, 92, 120), width=1)
     head = font(LATO_BLACK, 10)
-    d.text(((x0 + x1) / 2, y0 + 10), "INDEX CLOSE", font=head, fill=(186, 198, 220), anchor="mm")
-    d.line([(x0 + 6, y0 + 19), (x1 - 6, y0 + 19)], fill=(96, 112, 144), width=1)
+    d.text(((x0 + x1) / 2, y0 + 10), "INDEX CLOSE", font=head, fill=(170, 182, 204), anchor="mm")
+    d.line([(x0 + 6, y0 + 19), (x1 - 6, y0 + 19)], fill=(78, 92, 120), width=1)
     city, pct = font(LATO_BOLD, 15), font(LATO_BLACK, 15)
     row_h = (y1 - y0 - 22) / len(SCOREBOARD)
     for i, (c, v) in enumerate(SCOREBOARD):
@@ -463,45 +336,27 @@ def chips_scoreboard(a: Art, d: ImageDraw.ImageDraw):
 
 
 def art_chips():
-    a = Art("art_03.png", HERO, (12, 16, 28), HERO_BAND)
-    a.rect(0, 0, 1, 1, fill=(12, 16, 28), outline=None)
+    a = Art("art_03.png", HERO, (16, 22, 34), HERO_BAND)
+    a.rect(0, 0, 1, 1, fill=(18, 24, 38), outline=None)
     cx0, cx1 = 15 / 316, 195 / 316           # chart spans x = 15..195 at 1x
     for k in range(1, 6):
-        a.line([(cx0, k * 0.16), (cx1, k * 0.16)], (36, 46, 66), 1)
-    # a softly glowing chip behind the plunge
-    ccx, ccy, hh = 0.36, 0.6, 0.3
-    hw = hh * a.H / a.W
-    a.glow(ccx, ccy, 0.62, 0.5, (30, 110, 180), 120)
-    for k in range(7):
-        t = -hh * 0.8 + k * hh * 1.6 / 6
-        tx = -hw * 0.8 + k * hw * 1.6 / 6
-        a.line([(ccx - hw - 0.03, ccy + t), (ccx - hw, ccy + t)], (90, 160, 220), 1.4)
-        a.line([(ccx + hw, ccy + t), (ccx + hw + 0.03, ccy + t)], (90, 160, 220), 1.4)
-        a.line([(ccx + tx, ccy - hh - 0.07), (ccx + tx, ccy - hh)], (90, 160, 220), 1.4)
-        a.line([(ccx + tx, ccy + hh), (ccx + tx, ccy + hh + 0.07)], (90, 160, 220), 1.4)
-    a.rrect(ccx - hw, ccy - hh, ccx + hw, ccy + hh, r=4, fill=(20, 36, 60), outline=(100, 170, 230), width=1.4)
-    a.rrect(ccx - hw * 0.55, ccy - hh * 0.55, ccx + hw * 0.55, ccy + hh * 0.55, r=3,
-            fill=(30, 54, 86), outline=(120, 186, 240), width=1.1)
-    for k in range(1, 4):
-        a.line([(ccx - hw * 0.55, ccy - hh * 0.55 + k * hh * 0.275),
-                (ccx + hw * 0.55, ccy - hh * 0.55 + k * hh * 0.275)], (56, 92, 132), 0.8)
+        a.line([(cx0, k * 0.16), (cx1, k * 0.16)], (40, 50, 70), 1)
     # plunging index curve with a shaded fall
     curve = [(0.00, 0.30), (0.08, 0.27), (0.15, 0.36), (0.22, 0.33), (0.30, 0.48), (0.38, 0.45),
              (0.47, 0.62), (0.55, 0.58), (0.64, 0.76), (0.72, 0.72), (0.82, 0.86), (0.91, 0.84),
              (1.00, 0.95)]
     pts = [(cx0 + (cx1 - cx0) * x, y) for x, y in curve]
-    a.tint_poly(pts + [(cx1, 1), (cx0, 1)], (120, 18, 34), 120)
+    a.poly(pts + [(cx1, 1), (cx0, 1)], fill=(64, 26, 36), outline=None)
+    # falling candlesticks along the curve
     for i in range(1, len(pts) - 1):
         (xa, ya), (xb, yb) = pts[i], pts[i + 1]
         x = (xa + xb) / 2
         down = yb > ya
-        col = (236, 60, 60) if down else (70, 200, 130)
+        col = (226, 56, 56) if down else (60, 190, 120)
         lo, hi = min(ya, yb), max(ya, yb)
         a.rect(x - 0.008, lo, x + 0.008, hi, fill=col, outline=None)
-    a.glow_line(pts, (255, 40, 50), 9, 170)
-    a.line(pts, (255, 84, 84), 3.0)
-    a.line(pts, (255, 200, 200), 0.9)
-    a.circle(pts[-1][0], pts[-1][1], 0.04, fill=CORAL, outline=WHITE, width=1.4)
+    a.line(pts, (255, 92, 92), 2.6)
+    a.circle(pts[-1][0], pts[-1][1], 0.035, fill=CORAL, outline=WHITE, width=1.2)
     a.finish("AI SELL-OFF", callout="Asia, Friday’s close", attr="Closing prices",
              overlay=chips_scoreboard)
 
@@ -569,17 +424,12 @@ def art_poland():
     flagpole(a, 0.07, 0.08, 0.5)
     a.rect(0.07, 0.08, 0.2, 0.18, fill=WHITE, outline=INK, width=1)
     a.rect(0.07, 0.18, 0.2, 0.28, fill=(212, 33, 61), outline=INK, width=1)
-    # cruise missile heading west, large and dark against the sky, with a glowing exhaust
-    a.glow_line([(0.99, 0.12), (0.84, 0.22), (0.72, 0.3)], (255, 255, 255), 5, 200)
-    a.line([(0.99, 0.12), (0.84, 0.22), (0.72, 0.3)], WHITE, 2.4)
-    a.glow(0.72, 0.3, 0.12, 0.09, (255, 140, 40), 230)
-    MS = (34, 38, 48)
-    a.poly([(0.3, 0.42), (0.7, 0.26), (0.72, 0.34), (0.32, 0.5)], fill=MS, outline=INK, width=1)
-    a.poly([(0.25, 0.48), (0.3, 0.42), (0.32, 0.5)], fill=CRIMSON, outline=INK, width=1)
-    a.poly([(0.47, 0.4), (0.55, 0.2), (0.58, 0.36)], fill=MS, outline=INK, width=1)
-    a.poly([(0.47, 0.42), (0.52, 0.56), (0.56, 0.39)], fill=MS, outline=INK, width=1)
-    a.poly([(0.64, 0.3), (0.7, 0.18), (0.7, 0.3)], fill=MS, outline=INK, width=1)
-    a.line([(0.34, 0.45), (0.68, 0.31)], (120, 128, 142), 0.8)
+    # cruise missile heading west with trail
+    a.line([(0.98, 0.18), (0.82, 0.26), (0.64, 0.33)], (250, 250, 250), 3)
+    a.poly([(0.38, 0.38), (0.64, 0.3), (0.65, 0.36), (0.39, 0.44)], fill=(70, 76, 86), outline=INK, width=1)
+    a.poly([(0.34, 0.42), (0.38, 0.38), (0.39, 0.44)], fill=CRIMSON, outline=INK, width=1)
+    a.poly([(0.5, 0.36), (0.55, 0.24), (0.57, 0.34)], fill=(70, 76, 86), outline=INK, width=1)
+    a.poly([(0.6, 0.31), (0.66, 0.24), (0.66, 0.33)], fill=(70, 76, 86), outline=INK, width=1)
     # radar dish
     a.arc(0.86, 0.58, 0.12, 180, 360, INK, 2)
     a.line([(0.86, 0.58), (0.86, 0.72)], INK, 2)
@@ -714,7 +564,6 @@ def art_seoul():
 def art_kenya():
     a = Art("art_11.png", GRID, (240, 170, 90), GRID_BAND)
     a.gradient((236, 140, 70), (250, 214, 140), 0, 0.72, 12)
-    a.glow(0.8, 0.52, 0.36, 0.36, (255, 214, 120), 200)
     a.circle(0.8, 0.5, 0.2, fill=(255, 236, 170), outline=None)
     a.rect(0, 0.72, 1, 1, fill=(176, 130, 76), outline=None)
     # acacia

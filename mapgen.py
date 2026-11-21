@@ -1,4 +1,4 @@
-"""Locator map for the v11 front page: Natural Earth 110m land, Miller projection.
+"""Locator map for the v8 front page: Natural Earth 110m land, Miller projection.
 
 Dark ocean, cream land. The map is emitted as an inline SVG at its printed
 size (294 px wide, height set by the projection), so pins
@@ -17,9 +17,9 @@ ASSETS = BASE / "assets"
 W = 294
 LON0, LON1 = -116.0, 179.0
 LAT_TOP, LAT_BOT = 72.0, -55.0
-PIN_R = 9.0
-RING = 1.7                # white ring (1.6 px) plus its dark keyline, px from the fill edge
-MIN_GAP = 2 * (PIN_R + RING) + 4.4  # 4 px of map between outer keylines (v9: 3.5 px, no keyline)
+PIN_R = 8.5
+RING = 0.75               # half the 1.5 px white ring stroke, px
+MIN_GAP = 2 * PIN_R + 5.0  # centre-to-centre: 3.5 px of map between white rings (v7: 1 px)
 
 REGION_COLORS = {
     "ASIA-PACIFIC": "#9A1B1F",
@@ -113,10 +113,8 @@ def svg(pins) -> str:
             leaders.append(f'<line x1="{tx:.1f}" y1="{ty:.1f}" x2="{px:.1f}" y2="{py:.1f}"/>')
             dots.append(f'<circle cx="{tx:.1f}" cy="{ty:.1f}" r="2" fill="#F2B83C" stroke="#121822" stroke-width="0.6"/>')
         marks.append(
-            f'<g class="pin" data-pin="{n}"><circle class="key" cx="{px:.1f}" cy="{py:.1f}" r="{PIN_R + 1.2}" '
-            f'fill="none" stroke="#0B1018" stroke-width="1.0"/>'
-            f'<circle cx="{px:.1f}" cy="{py:.1f}" r="{PIN_R}" fill="{col}"/>'
-            f'<text x="{px:.1f}" y="{py + 3.8:.1f}">{n}</text></g>'
+            f'<g class="pin" data-pin="{n}"><circle cx="{px:.1f}" cy="{py:.1f}" r="{PIN_R}" fill="{col}"/>'
+            f'<text x="{px:.1f}" y="{py + 3.6:.1f}">{n}</text></g>'
         )
     return f'''<svg class="mapsvg" xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}">
 <rect width="{W}" height="{H}" fill="#1E2B3B"/>
@@ -124,7 +122,7 @@ def svg(pins) -> str:
 <path d="{land_path()}" fill="#E6DBC0"/>
 <g stroke="#F2B83C" stroke-width="1.1">{''.join(leaders)}</g>
 {''.join(dots)}
-<g font-family="LatoX" font-weight="900" font-size="10.5" fill="#FFFFFF" text-anchor="middle" stroke="none">
+<g font-family="LatoX" font-weight="900" font-size="10" fill="#FFFFFF" text-anchor="middle" stroke="none">
 <g stroke="#FFFFFF" stroke-width="1.5">{''.join(m.replace('<text', '<text stroke="none"') for m in marks)}</g>
 </g>
 </svg>'''
@@ -136,7 +134,7 @@ def check(pins):
         for b in placed[i + 1:]:
             d = math.hypot(a[3] - b[3], a[4] - b[4])
             gap = d - 2 * (PIN_R + RING)
-            if gap < 4.0:
+            if gap < 3.0:
                 raise SystemExit(f"map pins {a[0]} and {b[0]} have only {gap:.1f}px between rings")
         if not (PIN_R <= a[3] <= W - PIN_R and PIN_R <= a[4] <= H - PIN_R):
             raise SystemExit(f"map pin {a[0]} leaves the frame")

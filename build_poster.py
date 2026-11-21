@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-"""Build the Friday 20 November 2026 world-news front page (v11).
+"""Build the Friday 20 November 2026 world-news front page (v9).
 
 Run:  python3 build_poster.py
 Writes: assets/art_01..13.png, assets/poster.png, entry.png (1024x1024
-progressive 4:4:4 JPEG, highest quality from q91 down that lands in
-430,000-470,000 bytes) and /tmp/news_1120_v11_300.png (300 px Lanczos proof;
-delete it after checking).
+progressive 4:4:4 JPEG at q89, 380,000-461,999 bytes) and
+/tmp/news_1120_v9_300.png (300 px Lanczos proof).
 """
 from __future__ import annotations
 
@@ -26,10 +25,10 @@ import mapgen
 BASE = Path(__file__).resolve().parent
 ASSETS = BASE / "assets"
 CHROME = "/usr/bin/google-chrome"
-BUILD_TMP = Path("/tmp/news_1120_v11_build")
-PROOF_300 = Path("/tmp/news_1120_v11_300.png")
-MIN_BYTES, MAX_BYTES = 430_000, 470_000   # v11 budget (target 455-470 KB); the gate limit is 1,048,576 bytes
-QUALITIES = (91, 90, 89, 88, 87, 86, 85)   # first quality inside the budget wins
+BUILD_TMP = Path("/tmp/news_1120_v9_build")
+PROOF_300 = Path("/tmp/news_1120_v9_300.png")
+MIN_BYTES, MAX_BYTES = 380_000, 461_999   # v9 hard budget; the gate limit is 1,048,576 bytes
+QUALITIES = (88,)
 
 LATO = Path("/usr/share/fonts/truetype/lato")
 BRIEF_PX = 10.5          # brief type size
@@ -118,7 +117,7 @@ STORIES = [
          src="AP", tag="CONFIRMED",
          headline="Bukele Registers Bid for Third Term",
          summary="He files with the electoral tribunal ahead of the February vote.",
-         art="art_12.png", pin=(-89.2, 13.7)),
+         art="art_12.png", pin=(-88.2, 13.7)),
     dict(n=13, kind="grid", region="OCEANIA", beat="Sport", dl="Cricket", place="Wellington",
          src="ICC, RNZ", tag="CONFIRMED",
          headline="Phillips Hits 118 as NZ Make 368 v India",
@@ -376,10 +375,10 @@ h2 {{ margin:3px 0 0 0; font:700 20px/21px 'LibSerif'; color:#0E121A; letter-spa
 .bcol {{ flex:1 1 0; min-width:0; position:relative; }}
 .bcol + .bcol::before {{ content:''; position:absolute; left:-6.5px; top:2px; bottom:2px; border-left:1px solid #DCD6C8; }}
 .brief {{ height:13.8px; display:flex; align-items:center; gap:{BNUM_GAP}px; }}
-.bnum {{ flex:0 0 {BNUM_W}px; width:{BNUM_W}px; font:900 {BNUM_PX}px/13px 'LatoX'; font-variant-numeric:tabular-nums; }}
-.btext {{ margin:0; font:400 10.5px/13px 'LatoX'; color:#111827; white-space:nowrap; }}
-.btext b {{ font-weight:700; color:#111827; }}
-.btext i {{ color:#4B5563; }}
+.bnum {{ flex:0 0 {BNUM_W}px; width:{BNUM_W}px; font:700 {BNUM_PX}px/13px 'LatoX'; font-variant-numeric:tabular-nums; }}
+.btext {{ margin:0; font:400 10.5px/13px 'LatoX'; color:#1E242E; white-space:nowrap; }}
+.btext b {{ font-weight:700; color:#0E121A; }}
+.btext i {{ color:#585D66; }}
 .datecheck {{ top:958px; height:44px; border:1.5px solid #B8292F; background:#FFFDF9; display:flex; align-items:center; gap:7px; padding:0 6px; }}
 .dcbadge {{ flex:0 0 auto; background:#B8292F; color:#FFF; font:900 10px/1 'LatoX'; letter-spacing:.06em; padding:5px 5px 4px; border-radius:3px; white-space:nowrap; }}
 .dclines {{ flex:1; min-width:0; }}
@@ -461,9 +460,9 @@ AUDIT_JS = r'''() => {
 
   const svg = document.querySelector('.mapsvg');
   const SW = +svg.getAttribute('width'), SH = +svg.getAttribute('height');
-  const pins = [...document.querySelectorAll('.pin circle:not(.key)')].map(c => ({n: +c.parentNode.dataset.pin, x: +c.getAttribute('cx'), y: +c.getAttribute('cy'), r: +c.getAttribute('r')}));
+  const pins = [...document.querySelectorAll('.pin circle')].map(c => ({n: +c.parentNode.dataset.pin, x: +c.getAttribute('cx'), y: +c.getAttribute('cy'), r: +c.getAttribute('r')}));
   const pinOverlaps = [];
-  pins.forEach((a, i) => pins.forEach((b, j) => { if (j > i && Math.hypot(a.x - b.x, a.y - b.y) < a.r + b.r + 2 * 1.7 + 4) pinOverlaps.push([a.n, b.n]); }));
+  pins.forEach((a, i) => pins.forEach((b, j) => { if (j > i && Math.hypot(a.x - b.x, a.y - b.y) < a.r + b.r + 1.5 + 3) pinOverlaps.push([a.n, b.n]); }));
   const pinsOutside = pins.filter(p => p.x - p.r < 0 || p.y - p.r < 0 || p.x + p.r > SW || p.y + p.r > SH).map(p => p.n);
   const pinNumbers = pins.map(p => p.n);
   const pinR = pins.map(p => p.r);
@@ -597,7 +596,7 @@ def check_audit(a: dict) -> list[str]:
                      f"(inset {d['tagRightInset']}px, mid offset {d['tagMidDy']}px)")
     for b in a["briefNums"]:
         if b["bg"] not in ("rgba(0, 0, 0, 0)", "transparent") or b["radius"] != "0px" \
-                or b["fs"] != BNUM_PX or b["fw"] != "900":
+                or b["fs"] != BNUM_PX or b["fw"] != "700":
             f.append(f"wire numeral must be plain bold {BNUM_PX}px: {b}")
     if any(x != 1 for x in a["briefLines"]):
         f.append(f"briefs must be one line: {a['briefLines']}")
@@ -641,7 +640,7 @@ def encode_jpeg(im: Image.Image) -> tuple[bytes, int]:
         if MIN_BYTES <= buf.tell() <= MAX_BYTES:
             return buf.getvalue(), q
         print(f"q{q}: {buf.tell()} bytes, outside {MIN_BYTES}-{MAX_BYTES}")
-    raise SystemExit(f"entry.png cannot meet the {MIN_BYTES}-{MAX_BYTES}-byte budget")
+    raise SystemExit("entry.png cannot meet the size budget at q89")
 
 
 def main() -> int:
