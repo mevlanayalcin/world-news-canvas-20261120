@@ -1,10 +1,9 @@
-"""Locator map for the v17 front page: Natural Earth 110m land, Miller projection.
+"""Locator map for the v19 front page: Natural Earth 110m land, Miller projection.
 
-High-contrast editorial cartography: light-blue ocean (#E6EFF5), warm sand land
-(#D8CBB5) with subtle coastline stroke (#BFAF96). Emitted as inline SVG at its
-printed size (294 x 150 px) so pins, leaders, and numerals stay vector-sharp.
-Every story has a true-location dot verified to lie on Natural Earth land and a
-numbered circle linked by a 2-6 px leader (dark ink over white halo).
+Dark ocean (#1E2B3B), cream land (#E6DBC0). Emitted as inline SVG at printed
+size (294 x 144 px) so pins and numbers remain vector-sharp. Every story has a
+true-location dot verified on Natural Earth land and a numbered circle tied to
+it by a 2-6 px white-over-dark leader with zero overlaps or crossings.
 """
 from __future__ import annotations
 
@@ -15,21 +14,21 @@ from pathlib import Path
 BASE = Path(__file__).resolve().parent
 ASSETS = BASE / "assets"
 
-W = 336
+W = 294
 LON0, LON1 = -128.0, 179.0
-LAT_TOP, LAT_BOT = 76.0, -56.0
-PIN_R = 8.8
-RING = 0.75                # half the 1.5 px white ring stroke, px
-MIN_GAP = 2 * (PIN_R + RING) + 3.5   # >= 3.5 px clear map between outer white rings
+LAT_TOP, LAT_BOT = 72.0, -55.0
+PIN_R = 8.5
+RING = 0.75                 # half the 1.5 px white ring stroke, px
+MIN_GAP = 2 * PIN_R + 5.0   # >= 3.5 px clear map between outer white rings
 
 REGION_COLORS = {
-    "ASIA-PACIFIC": "#B8292F",
-    "AMERICAS": "#167A73",
-    "EUROPE": "#225396",
-    "MIDDLE EAST": "#B56212",
-    "AFRICA": "#267A4B",
-    "OCEANIA": "#673D87",
-    "GLOBAL": "#3B4D6B",
+    "ASIA-PACIFIC": "#9A1B1F",
+    "AMERICAS": "#1D6F6A",
+    "EUROPE": "#24508F",
+    "MIDDLE EAST": "#A85F12",
+    "AFRICA": "#2E7D50",
+    "OCEANIA": "#5E3A7A",
+    "GLOBAL/SCIENCE": "#4A5563",
 }
 
 
@@ -48,7 +47,7 @@ def project(lon: float, lat: float) -> tuple[float, float]:
     return x, y
 
 
-LEADER_MIN, LEADER_MAX = 2.0, 6.0   # visible leader between dot and pin ring, px
+LEADER_MIN, LEADER_MAX = 2.0, 6.0
 DOT_R = 2.2
 ANGLES = 24
 
@@ -59,7 +58,7 @@ def _rings_px():
 
 
 def on_land(lon: float, lat: float) -> bool:
-    """Even-odd point-in-polygon test against the Natural Earth rings."""
+    """Even-odd point-in-polygon test against the Natural Earth 110m rings."""
     land, _ = _rings_px()
     inside = False
     for ring in land:
@@ -106,12 +105,12 @@ def _seg_dist(px, py, ax, ay, bx, by):
 
 
 def place(dots: list[tuple[float, float]]) -> list[tuple[float, float]]:
-    """Choose a numbered-circle centre for every true-location dot."""
+    """Deterministic DFS placement of non-overlapping numbered pin circles."""
     lo_x, hi_x = PIN_R + 2, W - PIN_R - 2
     lo_y, hi_y = PIN_R + 2, H - PIN_R - 2
     ring_r = PIN_R + RING
     cands = []
-    for k, (tx, ty) in enumerate(dots):
+    for _k, (tx, ty) in enumerate(dots):
         opts = []
         for L in (LEADER_MIN, 4.0, LEADER_MAX):
             d = ring_r + DOT_R + L
@@ -121,7 +120,7 @@ def place(dots: list[tuple[float, float]]) -> list[tuple[float, float]]:
                 if not (lo_x <= cx <= hi_x and lo_y <= cy <= hi_y):
                     continue
                 if any(math.hypot(cx - ox, cy - oy) < ring_r + DOT_R + 1.0
-                       for j, (ox, oy) in enumerate(dots)):
+                       for _j, (ox, oy) in enumerate(dots)):
                     continue
                 up = (1 - math.cos(th + math.pi / 2)) / 2
                 cost = -2.0 * land_fraction(cx, cy) + 0.6 * up + 0.08 * L
@@ -183,20 +182,15 @@ def land_path() -> str:
     land = json.load(open(ASSETS / "world.json"))
     parts = []
     for ring in land:
-        pts = []
-        for lon, lat in ring:
-            x, y = project(lon, lat)
-            pts.append(f"{x:.1f},{y:.1f}")
+        pts = [f"{project(lon, lat)[0]:.1f},{project(lon, lat)[1]:.1f}" for lon, lat in ring]
         parts.append("M" + " L".join(pts) + " Z")
     return " ".join(parts)
 
 
 def svg(pins) -> str:
     placed = layout(pins)
-    grid = []
-    for lat in (0,):
-        _, y = project(0, lat)
-        grid.append(f'<line x1="0" y1="{y:.1f}" x2="{W}" y2="{y:.1f}"/>')
+    _, eq_y = project(0, 0)
+    grid = f'<line x1="0" y1="{eq_y:.1f}" x2="{W}" y2="{eq_y:.1f}"/>'
     leaders, dots, marks = [], [], []
     for n, tx, ty, px, py, region in placed:
         col = REGION_COLORS[region]
@@ -208,16 +202,16 @@ def svg(pins) -> str:
         marks.append(
             f'<g class="pin" data-pin="{n}" data-x0="{tx:.2f}" data-y0="{ty:.2f}">'
             f'<circle cx="{px:.1f}" cy="{py:.1f}" r="{PIN_R}" fill="{col}"/>'
-            f'<text x="{px:.1f}" y="{py + 3.7:.1f}">{n}</text></g>'
+            f'<text x="{px:.1f}" y="{py + 3.6:.1f}">{n}</text></g>'
         )
     return f'''<svg class="mapsvg" xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}">
-<rect width="{W}" height="{H}" fill="#E6EFF5"/>
-<g stroke="#C7D8E4" stroke-width="0.8">{''.join(grid)}</g>
-<path d="{land_path()}" fill="#D8CBB5" stroke="#BFAF96" stroke-width="0.6" stroke-linejoin="round"/>
-<g stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round">{''.join(leaders)}</g>
-<g stroke="#1E293B" stroke-width="1.4" stroke-linecap="round">{''.join(leaders)}</g>
+<rect width="{W}" height="{H}" fill="#1E2B3B"/>
+<g stroke="#2E4056" stroke-width="0.8">{grid}</g>
+<path d="{land_path()}" fill="#E6DBC0"/>
+<g stroke="#121822" stroke-width="2.6" stroke-linecap="round">{''.join(leaders)}</g>
+<g stroke="#FFFFFF" stroke-width="1.2" stroke-linecap="round">{''.join(leaders)}</g>
 {''.join(dots)}
-<g font-family="LatoX" font-weight="900" font-size="10.5" fill="#FFFFFF" text-anchor="middle" stroke="none">
+<g font-family="LatoX" font-weight="900" font-size="10" fill="#FFFFFF" text-anchor="middle" stroke="none">
 <g stroke="#FFFFFF" stroke-width="1.5">{''.join(m.replace('<text', '<text stroke="none"') for m in marks)}</g>
 </g>
 </svg>'''
