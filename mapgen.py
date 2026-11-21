@@ -1,9 +1,11 @@
-"""Locator map for the v8 front page: Natural Earth 110m land, Miller projection.
+"""Locator map for the v13 front page: Natural Earth 110m land, Miller projection.
 
 Dark ocean, cream land. The map is emitted as an inline SVG at its printed
-size (294 px wide, height set by the projection), so pins
-and numbers are vector-sharp on the page. Pins that would overlap are pushed
-apart by a fixed, deterministic relaxation and tied back with a leader line.
+size (294 px wide, height set by the projection), so pins and numbers are
+vector-sharp on the page. Every story has a small dot on its true location
+(checked to be on land) and a numbered circle beside it, tied to the dot by a
+2-6 px white leader. A deterministic search places the circles so none touch,
+none hide a dot, and each sits over land where it can.
 """
 from __future__ import annotations
 
@@ -47,44 +49,144 @@ def project(lon: float, lat: float) -> tuple[float, float]:
     return x, y
 
 
-def relax(points: list[tuple[float, float]]) -> list[tuple[float, float]]:
-    """Push pin centres apart until every pair is MIN_GAP apart (deterministic)."""
-    pos = [list(p) for p in points]
+LEADER_MIN, LEADER_MAX = 2.0, 6.0   # visible leader between dot and pin ring, px
+DOT_R = 2.2
+ANGLES = 24
+
+
+def _rings_px():
+    land = json.load(open(ASSETS / "world.json"))
+    return land, [[project(lon, lat) for lon, lat in ring] for ring in land]
+
+
+def on_land(lon: float, lat: float) -> bool:
+    """Even-odd point-in-polygon test against the Natural Earth rings."""
+    land, _ = _rings_px()
+    inside = False
+    for ring in land:
+        for i in range(len(ring)):
+            x1, y1 = ring[i]
+            x2, y2 = ring[i - 1]
+            if (y1 > lat) != (y2 > lat) and lon < (x2 - x1) * (lat - y1) / (y2 - y1) + x1:
+                inside = not inside
+    return inside
+
+
+def _land_mask(ss: int = 4):
+    from PIL import Image, ImageDraw
+    _, rings = _rings_px()
+    im = Image.new("L", (W * ss, H * ss), 0)
+    d = ImageDraw.Draw(im)
+    for ring in rings:
+        d.polygon([(x * ss, y * ss) for x, y in ring], fill=255)
+    return im, ss
+
+
+def land_fraction(cx: float, cy: float, r: float = PIN_R, _cache={}) -> float:
+    if "m" not in _cache:
+        im, ss = _land_mask()
+        _cache["m"], _cache["ss"] = im.load(), ss
+    px, ss = _cache["m"], _cache["ss"]
+    hit = tot = 0
+    for i in range(-8, 9):
+        for j in range(-8, 9):
+            x, y = cx + r * i / 8, cy + r * j / 8
+            if (x - cx) ** 2 + (y - cy) ** 2 > r * r:
+                continue
+            tot += 1
+            xi, yi = int(x * ss), int(y * ss)
+            if 0 <= xi < W * ss and 0 <= yi < H * ss and px[xi, yi]:
+                hit += 1
+    return hit / tot
+
+
+def _seg_dist(px, py, ax, ay, bx, by):
+    dx, dy = bx - ax, by - ay
+    t = max(0.0, min(1.0, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy or 1)))
+    return math.hypot(px - (ax + t * dx), py - (ay + t * dy))
+
+
+def place(dots: list[tuple[float, float]]) -> list[tuple[float, float]]:
+    """Choose a numbered-circle centre for every true-location dot.
+
+    Each circle sits off its dot by a short visible leader (LEADER_MIN-MAX px),
+    is nearer its own dot than any other, never crosses another leader,
+    never covers any dot, keeps MIN_GAP from every other circle, keeps its
+    leader clear of other circles and stays in the frame. Among the feasible
+    spots it prefers circles that sit over land and point upward. The search
+    is a deterministic depth-first search, crowded pins first.
+    """
     lo_x, hi_x = PIN_R + 2, W - PIN_R - 2
     lo_y, hi_y = PIN_R + 2, H - PIN_R - 2
-    for it in range(2400):
-        moved = False
-        pull = 0.02 if it < 1600 else 0.0  # settle with pure pushes at the end
-        for i in range(len(pos)):
-            for j in range(i + 1, len(pos)):
-                dx = pos[j][0] - pos[i][0]
-                dy = pos[j][1] - pos[i][1]
-                dist = math.hypot(dx, dy)
-                if dist < MIN_GAP:
-                    if dist < 1e-6:
-                        dx, dy, dist = 1.0, 0.0, 1.0
-                    push = (MIN_GAP - dist) / 2 + 0.05
-                    ux, uy = dx / dist, dy / dist
-                    pos[i][0] -= ux * push
-                    pos[i][1] -= uy * push
-                    pos[j][0] += ux * push
-                    pos[j][1] += uy * push
-                    moved = True
-        for p, (ox, oy) in zip(pos, points):
-            # gentle pull home keeps pins near their places
-            p[0] += (ox - p[0]) * pull
-            p[1] += (oy - p[1]) * pull
-            p[0] = min(hi_x, max(lo_x, p[0]))
-            p[1] = min(hi_y, max(lo_y, p[1]))
-        if not moved and it >= 1600:
-            break
-    return [(round(x, 2), round(y, 2)) for x, y in pos]
+    ring_r = PIN_R + RING
+    cands = []
+    for k, (tx, ty) in enumerate(dots):
+        opts = []
+        for L in (LEADER_MIN, 4.0, LEADER_MAX):
+            d = ring_r + DOT_R + L
+            for a in range(ANGLES):
+                th = -math.pi / 2 + 2 * math.pi * a / ANGLES   # 0 = straight up
+                cx, cy = tx + d * math.cos(th), ty + d * math.sin(th)
+                if not (lo_x <= cx <= hi_x and lo_y <= cy <= hi_y):
+                    continue
+                if any(math.hypot(cx - ox, cy - oy) < ring_r + DOT_R + 1.0
+                       for j, (ox, oy) in enumerate(dots)):
+                    continue
+                up = (1 - math.cos(th + math.pi / 2)) / 2   # 0 up .. 1 down
+                cost = -2.0 * land_fraction(cx, cy) + 0.6 * up + 0.08 * L
+                opts.append((round(cost, 6), a, L, cx, cy))
+        opts.sort()
+        cands.append(opts)
+    crowd = [sum(1 for o in dots if 0 < math.hypot(o[0] - t[0], o[1] - t[1]) < 4 * MIN_GAP)
+             for t in dots]
+    order = sorted(range(len(dots)), key=lambda i: (-crowd[i], i))
+    chosen: dict[int, tuple[float, float]] = {}
+
+    def cross(a, b, c, d):
+        def o(p, q, r):
+            return (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0])
+        return o(a, b, c) * o(a, b, d) < 0 and o(c, d, a) * o(c, d, b) < 0
+
+    def ok(i, cx, cy):
+        tx, ty = dots[i]
+        own = math.hypot(cx - tx, cy - ty)
+        # a circle must sit nearer its own dot than any other dot, so no pin
+        # reads as belonging to its neighbour
+        if any(j != i and math.hypot(cx - ox, cy - oy) <= own for j, (ox, oy) in enumerate(dots)):
+            return False
+        for j, (ox, oy) in chosen.items():
+            if cross((tx, ty), (cx, cy), dots[j], (ox, oy)):
+                return False
+            if math.hypot(cx - ox, cy - oy) < MIN_GAP:
+                return False
+            jx, jy = dots[j]
+            if _seg_dist(ox, oy, tx, ty, cx, cy) < ring_r + 1.0:     # my leader vs their circle
+                return False
+            if _seg_dist(cx, cy, jx, jy, ox, oy) < ring_r + 1.0:     # their leader vs my circle
+                return False
+        return True
+
+    def dfs(k):
+        if k == len(order):
+            return True
+        i = order[k]
+        for _c, _a, _L, cx, cy in cands[i]:
+            if ok(i, cx, cy):
+                chosen[i] = (cx, cy)
+                if dfs(k + 1):
+                    return True
+                del chosen[i]
+        return False
+
+    if not dfs(0):
+        raise SystemExit("map: no overlap-free pin layout")
+    return [(round(chosen[i][0], 2), round(chosen[i][1], 2)) for i in range(len(dots))]
 
 
 def layout(pins):
     """pins: list of (n, lon, lat, region). Returns [(n, x0, y0, x, y, region)]."""
     true = [project(lon, lat) for _n, lon, lat, _r in pins]
-    placed = relax(true)
+    placed = place(true)
     return [(n, tx, ty, px, py, r) for (n, _lo, _la, r), (tx, ty), (px, py) in zip(pins, true, placed)]
 
 
@@ -109,18 +211,22 @@ def svg(pins) -> str:
     leaders, dots, marks = [], [], []
     for n, tx, ty, px, py, region in placed:
         col = REGION_COLORS[region]
-        if math.hypot(px - tx, py - ty) > PIN_R * 0.6:
-            leaders.append(f'<line x1="{tx:.1f}" y1="{ty:.1f}" x2="{px:.1f}" y2="{py:.1f}"/>')
-            dots.append(f'<circle cx="{tx:.1f}" cy="{ty:.1f}" r="2" fill="#F2B83C" stroke="#121822" stroke-width="0.6"/>')
+        # leader from the true location to the ring, white over a dark casing
+        d = math.hypot(px - tx, py - ty)
+        ux, uy = (px - tx) / d, (py - ty) / d
+        ex, ey = px - ux * (PIN_R + RING), py - uy * (PIN_R + RING)
+        leaders.append(f'<line x1="{tx:.1f}" y1="{ty:.1f}" x2="{ex:.1f}" y2="{ey:.1f}"/>')
+        dots.append(f'<circle cx="{tx:.1f}" cy="{ty:.1f}" r="{DOT_R}" fill="{col}" stroke="#FFFFFF" stroke-width="1"/>')
         marks.append(
-            f'<g class="pin" data-pin="{n}"><circle cx="{px:.1f}" cy="{py:.1f}" r="{PIN_R}" fill="{col}"/>'
+            f'<g class="pin" data-pin="{n}" data-x0="{tx:.2f}" data-y0="{ty:.2f}"><circle cx="{px:.1f}" cy="{py:.1f}" r="{PIN_R}" fill="{col}"/>'
             f'<text x="{px:.1f}" y="{py + 3.6:.1f}">{n}</text></g>'
         )
     return f'''<svg class="mapsvg" xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}">
 <rect width="{W}" height="{H}" fill="#1E2B3B"/>
 <g stroke="#2E4056" stroke-width="0.8">{''.join(grid)}</g>
 <path d="{land_path()}" fill="#E6DBC0"/>
-<g stroke="#F2B83C" stroke-width="1.1">{''.join(leaders)}</g>
+<g stroke="#121822" stroke-width="2.6" stroke-linecap="round">{''.join(leaders)}</g>
+<g stroke="#FFFFFF" stroke-width="1.2" stroke-linecap="round">{''.join(leaders)}</g>
 {''.join(dots)}
 <g font-family="LatoX" font-weight="900" font-size="10" fill="#FFFFFF" text-anchor="middle" stroke="none">
 <g stroke="#FFFFFF" stroke-width="1.5">{''.join(m.replace('<text', '<text stroke="none"') for m in marks)}</g>
@@ -130,12 +236,22 @@ def svg(pins) -> str:
 
 def check(pins):
     placed = layout(pins)
+    ring_r = PIN_R + RING
+    for (n, lon, lat, _r) in pins:
+        if not on_land(lon, lat):
+            raise SystemExit(f"map pin {n} location ({lon}, {lat}) is not on Natural Earth land")
     for i, a in enumerate(placed):
         for b in placed[i + 1:]:
             d = math.hypot(a[3] - b[3], a[4] - b[4])
-            gap = d - 2 * (PIN_R + RING)
+            gap = d - 2 * ring_r
             if gap < 3.0:
                 raise SystemExit(f"map pins {a[0]} and {b[0]} have only {gap:.1f}px between rings")
         if not (PIN_R <= a[3] <= W - PIN_R and PIN_R <= a[4] <= H - PIN_R):
             raise SystemExit(f"map pin {a[0]} leaves the frame")
+        leader = math.hypot(a[3] - a[1], a[4] - a[2]) - ring_r - DOT_R
+        if not LEADER_MIN - 0.01 <= leader <= LEADER_MAX + 0.01:
+            raise SystemExit(f"map pin {a[0]} leader {leader:.1f}px outside {LEADER_MIN}-{LEADER_MAX}px")
+        for b in placed:
+            if math.hypot(a[3] - b[1], a[4] - b[2]) < ring_r + DOT_R + 1.0 - 0.01:
+                raise SystemExit(f"map pin {a[0]} covers the location dot of pin {b[0]}")
     return placed

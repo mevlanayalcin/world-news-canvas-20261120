@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Build the Friday 20 November 2026 world-news front page (v9).
+"""Build the Friday 20 November 2026 world-news front page (v13).
 
 Run:  python3 build_poster.py
 Writes: assets/art_01..13.png, assets/poster.png, entry.png (1024x1024
-progressive 4:4:4 JPEG at q89, 380,000-461,999 bytes) and
-/tmp/news_1120_v9_300.png (300 px Lanczos proof).
+progressive 4:4:4 JPEG at q89, 380,000-465,000 bytes) and
+/tmp/news_1120_v13_300.png (300 px Lanczos proof).
 """
 from __future__ import annotations
 
@@ -25,16 +25,19 @@ import mapgen
 BASE = Path(__file__).resolve().parent
 ASSETS = BASE / "assets"
 CHROME = "/usr/bin/google-chrome"
-BUILD_TMP = Path("/tmp/news_1120_v9_build")
-PROOF_300 = Path("/tmp/news_1120_v9_300.png")
-MIN_BYTES, MAX_BYTES = 380_000, 461_999   # v9 hard budget; the gate limit is 1,048,576 bytes
-QUALITIES = (88,)
+BUILD_TMP = Path("/tmp/news_1120_v13_build")
+PROOF_300 = Path("/tmp/news_1120_v13_300.png")
+MIN_BYTES, MAX_BYTES = 380_000, 465_000   # v13 hard budget; the gate limit is 1,048,576 bytes
+QUALITIES = (89,)
 
 LATO = Path("/usr/share/fonts/truetype/lato")
-BRIEF_PX = 10.5          # brief type size
-BRIEF_MAX_W = 328        # every brief must fit on one line this wide (px)
-BNUM_PX = 10.8           # uncircled bold wire numeral
-BNUM_W, BNUM_GAP = 14, 4 # numeral box width and gap before the place (px)
+BRIEF_PX = 11.5          # brief type size (v9: 10.5 px)
+BRIEF_ROW = 20.5         # brief line pitch, px (v9: 13.8 px)
+BRIEF_PAD = 4            # left/right padding inside each tinted row, px
+BRIEF_MAX_W = 326        # numeral + text must fit one line this wide (334 px column - padding)
+BNUM_PX = 11.5           # uncircled bold wire numeral
+BNUM_W, BNUM_GAP = 16, 4 # numeral box width and gap before the place (px)
+BRIEF_INK = "#111827"
 GRID_DL_PX = 8.5         # 900-weight caps dateline on the 188 px cards (leads use 10 px)
 DATELINE_GAP = 6         # clear px between the end of PLACE · BEAT and its certainty pill
 
@@ -43,9 +46,9 @@ DATELINE_GAP = 6         # clear px between the end of PLACE · BEAT and its cer
 # 20 November 2026 (UTC). Thursday 19 November news and events that have not
 # happened yet (Saturday 21 November) appear only in the DATE CHECK box, as
 # omissions.
-# kind: hero (1-3) · grid (4-13) · brief (14-37).
+# kind: hero (1-3) · grid (4-13) · brief (14-29).
 # dl: the beat word printed in the dateline; beat: the category counted in
-# the "25 beats" tally.
+# the "24 beats" tally.
 # Every illustrated story prints PLACE · BEAT on its dateline row, with its
 # tag (OFFICIAL / CONFIRMED / REPORTED) as a tinted pill at the row's right end.
 # The 188 px cards use short place names so both fit on one line.
@@ -65,7 +68,7 @@ STORIES = [
          summary="The storm crossed the Odisha coast around 8 am local time and then weakened "
                  "inland; up to 372,000 people were moved to shelters and no deaths have been "
                  "reported.",
-         art="art_02.png", pin=(84.9, 19.3)),
+         art="art_02.png", pin=(84.8, 19.4)),   # Gopalpur coast, on 110m land
     dict(n=3, kind="hero", region="ASIA-PACIFIC", beat="Markets", dl="Markets",
          place="Taipei · Seoul · Tokyo", src="Reuters, Al Jazeera", tag="CONFIRMED",
          headline="AI Sell-Off Sinks Asia’s Stock\nMarkets in Worst Week Since 2020",
@@ -117,67 +120,52 @@ STORIES = [
          src="AP", tag="CONFIRMED",
          headline="Bukele Registers Bid for Third Term",
          summary="He files with the electoral tribunal ahead of the February vote.",
-         art="art_12.png", pin=(-88.2, 13.7)),
+         art="art_12.png", pin=(-89.2, 13.7)),
     dict(n=13, kind="grid", region="OCEANIA", beat="Sport", dl="Cricket", place="Wellington",
          src="ICC, RNZ", tag="CONFIRMED",
          headline="Phillips Hits 118 as NZ Make 368 v India",
          summary="Glenn Phillips’ century is backed by Henry Nicholls, unbeaten on 175.",
          art="art_13.png", pin=(174.8, -41.3)),
-    # --- also on Friday: Europe ---------------------------------------------
+    # --- also on Friday: 16 wire briefs, 8 per column, every region --------
+    # --- Europe -------------------------------------------------------------
     dict(n=14, kind="brief", region="EUROPE", beat="Conflict", place="Lviv",
-         text="Sknyliv rail station struck overnight, 2 killed", src="Kyiv Independent"),
-    dict(n=15, kind="brief", region="EUROPE", beat="Diplomacy", place="Paris",
-         text="Seeks UNSC session after embassies hit in Kyiv", src="Quai d’Orsay"),
-    dict(n=16, kind="brief", region="EUROPE", beat="Protest", place="Berlin",
+         text="Sknyliv rail station hit, 2 killed", src="Kyiv Independent"),
+    dict(n=15, kind="brief", region="EUROPE", beat="Protest", place="Berlin",
          text="Gen Z rally over military service in 73 cities", src="organisers"),
-    dict(n=17, kind="brief", region="EUROPE", beat="Sport", place="Turin",
-         text="ATP plans to lift player pay past $350m by 2028", src="ATP"),
     # --- Asia-Pacific -------------------------------------------------------
-    dict(n=18, kind="brief", region="ASIA-PACIFIC", beat="Central banks", place="Beijing",
-         text="Loan prime rates held: 1-year 3.0%, 5-year 3.5%", src="PBOC"),
-    dict(n=19, kind="brief", region="ASIA-PACIFIC", beat="Health", place="Changwon",
-         text="Korea’s first domestic cholera case in 10 years", src="KDCA"),
-    dict(n=20, kind="brief", region="ASIA-PACIFIC", beat="Disinformation", place="Taipei",
+    dict(n=16, kind="brief", region="ASIA-PACIFIC", beat="Central banks", place="Beijing",
+         text="1-yr loan prime rate held at 3.0%, 5-yr 3.5%", src="PBOC"),
+    dict(n=17, kind="brief", region="ASIA-PACIFIC", beat="Health", place="Changwon",
+         text="Korea’s first local cholera case in 10 years", src="KDCA"),
+    dict(n=18, kind="brief", region="ASIA-PACIFIC", beat="Disinformation", place="Taipei",
          text="2,700 China-linked accounts flagged to Meta", src="Reuters"),
-    dict(n=21, kind="brief", region="ASIA-PACIFIC", beat="Markets", place="Singapore",
-         text="STI slides 2.1% to close below 5,000", src="SGX"),
-    dict(n=22, kind="brief", region="ASIA-PACIFIC", beat="Diplomacy", place="Shenzhen",
-         text="Xi meets Malaysia’s Anwar on APEC sidelines", src="FMPRC"),
     # --- Americas -----------------------------------------------------------
-    dict(n=23, kind="brief", region="AMERICAS", beat="US politics", place="Washington",
+    dict(n=19, kind="brief", region="AMERICAS", beat="US politics", place="Washington",
          text="Trump hails Asia trip, rejects Iran offer", src="CBS"),
-    dict(n=24, kind="brief", region="AMERICAS", beat="Tech", place="New York",
-         text="Nasdaq falls over 3% as the AI sell-off spreads", src="Reuters"),
-    dict(n=25, kind="brief", region="AMERICAS", beat="Weather", place="Brevard, FL",
+    dict(n=20, kind="brief", region="AMERICAS", beat="Tech", place="New York",
+         text="Nasdaq falls over 3% in the AI sell-off", src="Reuters"),
+    dict(n=21, kind="brief", region="AMERICAS", beat="Weather", place="Brevard, FL",
          text="Record floods: emergency, 100+ rescues", src="NWS"),
-    dict(n=26, kind="brief", region="AMERICAS", beat="Sport", place="Las Vegas",
-         text="Russell tops wet second practice in 1:47.272", src="F1"),
     # --- Global / science ---------------------------------------------------
-    dict(n=27, kind="brief", region="GLOBAL/SCIENCE", beat="UN", place="New York",
-         text="9th straw poll on the next secretary-general", src="SCR"),
-    dict(n=28, kind="brief", region="GLOBAL/SCIENCE", beat="Wildlife", place="Amazon",
-         text="25-year camera traps benchmark the bush dog", src="WCS"),
+    dict(n=22, kind="brief", region="GLOBAL/SCIENCE", beat="Wildlife", place="Amazon",
+         text="25-year camera traps benchmark bush dog", src="WCS"),
     # --- Middle East --------------------------------------------------------
-    dict(n=29, kind="brief", region="MIDDLE EAST", beat="Conflict", place="Riyadh",
-         text="Coalition intercepts 1 Houthi missile and 5 drones", src="AP"),
-    dict(n=30, kind="brief", region="MIDDLE EAST", beat="Piracy", place="Mukalla",
-         text="Skiff fires on ship 95 nm SW; guards repel it", src="UKMTO"),
-    dict(n=31, kind="brief", region="MIDDLE EAST", beat="Shipping", place="Hormuz",
-         text="US Iran-blockade memo lifts war-risk cover", src="Al Jazeera"),
+    dict(n=23, kind="brief", region="MIDDLE EAST", beat="Conflict", place="Riyadh",
+         text="Coalition intercepts 1 Houthi missile, 5 drones", src="AP"),
+    dict(n=24, kind="brief", region="MIDDLE EAST", beat="Piracy", place="Mukalla",
+         text="Skiff fires on ship 95 nm SW, is repelled", src="UKMTO"),
+    dict(n=25, kind="brief", region="MIDDLE EAST", beat="Shipping", place="Hormuz",
+         text="US blockade memo lifts war-risk cover", src="Al Jazeera"),
     # --- Africa -------------------------------------------------------------
-    dict(n=32, kind="brief", region="AFRICA", beat="Migration", place="Dakar",
+    dict(n=26, kind="brief", region="AFRICA", beat="Migration", place="Dakar",
          text="Migration declaration and roadmap adopted", src="IOM"),
-    dict(n=33, kind="brief", region="AFRICA", beat="Markets", place="Johannesburg",
-         text="Rand hits 1-year low on coalition jitters", src="Reuters"),
-    dict(n=34, kind="brief", region="AFRICA", beat="Debt", place="Abidjan",
-         text="22 African states in or at high risk of debt distress", src="AfDB"),
-    dict(n=35, kind="brief", region="AFRICA", beat="Energy", place="Lilongwe",
-         text="Fuel queues persist despite $30m release", src="Al Jazeera"),
+    dict(n=27, kind="brief", region="AFRICA", beat="Markets", place="Johannesburg",
+         text="Rand at 1-yr low on coalition jitters", src="Reuters"),
+    dict(n=28, kind="brief", region="AFRICA", beat="Debt", place="Abidjan",
+         text="22 states in or at high risk of debt distress", src="AfDB"),
     # --- Oceania ------------------------------------------------------------
-    dict(n=36, kind="brief", region="OCEANIA", beat="Business", place="Sydney",
-         text="David Jones collapses; 1,689 redundancy notices", src="receivers"),
-    dict(n=37, kind="brief", region="OCEANIA", beat="Diplomacy", place="Shenzhen",
-         text="Xi hails ‘full turnaround’, praises Albanese", src="ABC"),
+    dict(n=29, kind="brief", region="OCEANIA", beat="Business", place="Sydney",
+         text="David Jones collapses; 1,689 redundancies", src="receivers"),
 ]
 
 REGION_ORDER = ["EUROPE", "ASIA-PACIFIC", "AMERICAS", "MIDDLE EAST", "AFRICA", "OCEANIA", "GLOBAL/SCIENCE"]
@@ -330,7 +318,7 @@ body {{ font-family:'LatoX', sans-serif; color:#121822; -webkit-font-smoothing:a
 .stat b {{ font:700 25px/26px 'LibSerif'; color:#121822; white-space:nowrap; }}
 .stat .sx {{ font:400 10.5px/12.5px 'LatoX'; color:#2A303A; height:25px; overflow:hidden; }}
 .regionbar {{ top:163px; height:15px; display:flex; gap:2px; }}
-.rg {{ min-width:0; display:flex; align-items:center; justify-content:center; gap:5px; color:#FFF; white-space:nowrap; overflow:hidden; }}
+.rg {{ min-width:max-content; padding:0 5px; display:flex; align-items:center; justify-content:center; gap:5px; color:#FFF; white-space:nowrap; overflow:hidden; }}
 .rg span {{ font:900 10px/1 'LatoX'; letter-spacing:.05em; }}
 .rg b {{ font:900 10.5px/1 'LatoX'; }}
 .row {{ display:flex; }}
@@ -374,11 +362,12 @@ h2 {{ margin:3px 0 0 0; font:700 20px/21px 'LibSerif'; color:#0E121A; letter-spa
 .briefgrid {{ display:flex; gap:12px; margin-top:2px; }}
 .bcol {{ flex:1 1 0; min-width:0; position:relative; }}
 .bcol + .bcol::before {{ content:''; position:absolute; left:-6.5px; top:2px; bottom:2px; border-left:1px solid #DCD6C8; }}
-.brief {{ height:13.8px; display:flex; align-items:center; gap:{BNUM_GAP}px; }}
-.bnum {{ flex:0 0 {BNUM_W}px; width:{BNUM_W}px; font:700 {BNUM_PX}px/13px 'LatoX'; font-variant-numeric:tabular-nums; }}
-.btext {{ margin:0; font:400 10.5px/13px 'LatoX'; color:#1E242E; white-space:nowrap; }}
-.btext b {{ font-weight:700; color:#0E121A; }}
-.btext i {{ color:#585D66; }}
+.brief {{ height:{BRIEF_ROW}px; display:flex; align-items:center; gap:{BNUM_GAP}px; padding:0 {BRIEF_PAD}px; border-radius:2px; }}
+.bcol .brief:nth-child(odd) {{ background:#F0EADD; }}
+.bnum {{ flex:0 0 {BNUM_W}px; width:{BNUM_W}px; font:700 {BNUM_PX}px/14px 'LatoX'; font-variant-numeric:tabular-nums; }}
+.btext {{ margin:0; font:400 {BRIEF_PX}px/14px 'LatoX'; color:{BRIEF_INK}; white-space:nowrap; }}
+.btext b {{ font-weight:700; color:{BRIEF_INK}; }}
+.btext i {{ color:#4B5563; }}
 .datecheck {{ top:958px; height:44px; border:1.5px solid #B8292F; background:#FFFDF9; display:flex; align-items:center; gap:7px; padding:0 6px; }}
 .dcbadge {{ flex:0 0 auto; background:#B8292F; color:#FFF; font:900 10px/1 'LatoX'; letter-spacing:.06em; padding:5px 5px 4px; border-radius:3px; white-space:nowrap; }}
 .dclines {{ flex:1; min-width:0; }}
@@ -472,7 +461,8 @@ AUDIT_JS = r'''() => {
   const headlineLines = cards.map(c => lines(c.querySelector('.hl')));
   const summaryLines = cards.map(c => lines(c.querySelector('.sum')));
   const briefLines = briefs.map(b => lines(b.querySelector('.bt')));
-  const briefWidths = briefs.map(b => +(R(b.querySelector('.bt')).right - R(b).x).toFixed(1));
+  const briefWidths = briefs.map(b => +(R(b.querySelector('.bt')).right - R(b).x - parseFloat(getComputedStyle(b).paddingLeft)).toFixed(1));
+  const briefRows = briefs.map(b => ({h: +R(b).h.toFixed(2), fs: parseFloat(getComputedStyle(b.querySelector('.btext')).fontSize), color: getComputedStyle(b.querySelector('.btext')).color, bg: getComputedStyle(b).backgroundColor, inside: R(b.querySelector('.bt')).right <= R(b).right - parseFloat(getComputedStyle(b).paddingRight) + 0.5}));
   const statLines = [...document.querySelectorAll('.stat .s2')].map(lines);
   const tagCount = document.querySelectorAll('.tg').length;
   const datelines = cards.map(c => { const k = c.querySelector('.kicker'), t = c.querySelector('.pt'), g = k.querySelector('.tg');
@@ -512,7 +502,7 @@ AUDIT_JS = r'''() => {
   const cardBottoms = cards.map(c => +(R(c.querySelector('.summary')).bottom - R(c).y).toFixed(1));
   return {doc, stories, regionCounts, regionTagged, overflows, textClip, blockOverlaps, bandOverlaps, cardOverlaps,
           tagCount, datelines, briefNums, heroBottoms, pinCount: pins.length, pinNumbers, pinLabels, pinR, pinOverlaps, pinsOutside, headlineLines, summaryLines, briefLines,
-          briefWidths, statLines, minHtml, minHtmlText, minSvg, minDl, imagesLoaded, artSizes, stats, kicker,
+          briefWidths, briefRows, statLines, minHtml, minHtmlText, minSvg, minDl, imagesLoaded, artSizes, stats, kicker,
           pageBottom: R(document.querySelector('.footer')).bottom, rects, cardBottoms,
           wireSlack: +(bc.bottom - Math.max(...[...document.querySelectorAll('.bcol')].map(e => R(e).bottom))).toFixed(1),
           mapSlack: +(bt.bottom - R(document.querySelector('.mapcap')).bottom).toFixed(1),
@@ -529,11 +519,14 @@ def check_stories() -> list[str]:
             if w.lower() in body.lower():
                 f.append(f"story {s['n']} contains date-check-only text '{w}'")
     nums = [s["n"] for s in STORIES]
-    if nums != list(range(1, 38)):
-        f.append(f"v9 needs stories 1-37 in order, got {nums}")
+    if nums != list(range(1, 30)):
+        f.append(f"v13 needs stories 1-29 in order, got {nums}")
     kinds = [s["kind"] for s in STORIES]
-    if kinds != ["hero"] * 3 + ["grid"] * 10 + ["brief"] * 24:
-        f.append("v9 needs 3 leads, 10 cards and 24 briefs")
+    if kinds != ["hero"] * 3 + ["grid"] * 10 + ["brief"] * 16:
+        f.append("v13 needs 3 leads, 10 cards and 16 briefs")
+    briefs = [s for s in STORIES if s["kind"] == "brief"]
+    if {s["region"] for s in briefs} != set(REGION_ORDER):
+        f.append(f"briefs cover only {sorted({s['region'] for s in briefs})}")
     for n, w in measure_briefs().items():
         if w > BRIEF_MAX_W:
             f.append(f"brief {n} is {w}px wide at {BRIEF_PX}px; max {BRIEF_MAX_W}px on one line")
@@ -541,7 +534,7 @@ def check_stories() -> list[str]:
         s = STORIES[sn - 1]
         if phrase not in s["headline"].replace("\n", " ") + " " + s["summary"]:
             f.append(f"stat {v} not backed by story {sn} ('{phrase}')")
-    if len(BEATS) < 25:
+    if len(BEATS) < 24:
         f.append(f"only {len(BEATS)} beats")
     return f
 
@@ -602,6 +595,13 @@ def check_audit(a: dict) -> list[str]:
         f.append(f"briefs must be one line: {a['briefLines']}")
     if max(a["briefWidths"]) > BRIEF_MAX_W:
         f.append(f"brief widths {a['briefWidths']}")
+    rows = a["briefRows"]
+    if any(r["h"] != BRIEF_ROW or r["fs"] != BRIEF_PX or r["color"] != "rgb(17, 24, 39)" or not r["inside"]
+           for r in rows):
+        f.append(f"brief rows must be {BRIEF_ROW}px pitch, {BRIEF_PX}px {BRIEF_INK}, inside padding: {rows}")
+    tints = [r["bg"] for r in rows]
+    if len(set(tints)) != 2 or tints[0] == tints[1]:
+        f.append(f"brief rows must alternate tint: {tints}")
     if any(x != 2 for x in a["statLines"]):
         f.append(f"stat explanations must be 2 lines: {a['statLines']}")
     if a["minDl"] < GRID_DL_PX:
