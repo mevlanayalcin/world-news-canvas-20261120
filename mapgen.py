@@ -1,4 +1,4 @@
-"""Locator map for the v10 front page: Natural Earth 110m land, Miller projection.
+"""Locator map for the v11 front page: Natural Earth 110m land, Miller projection.
 
 Dark ocean, cream land. The map is emitted as an inline SVG at its printed
 size (294 px wide, height set by the projection), so pins

@@ -1,4 +1,4 @@
-"""Editorial illustrations for the Friday 20 November 2026 front page (v8).
+"""Editorial illustrations for the Friday 20 November 2026 front page (v11).
 
 Each picture has two layers:
 
@@ -159,7 +159,7 @@ class Art:
 
     # ---- printed-size typography ------------------------------------------
     def finish(self, badge: str, callout: str | None = None, attr: str | None = None,
-               overlay=None):
+               overlay=None, attr_right: int | None = None):
         out = self.im.resize(self.size, Image.LANCZOS)
         out = ImageEnhance.Contrast(out).enhance(1.06)   # crisper focal shapes at 300 px
         d = ImageDraw.Draw(out)
@@ -176,7 +176,9 @@ class Art:
         if overlay:
             overlay(self, d)
         if attr:
-            if self.lead:
+            if self.lead and attr_right:   # right edge at attr_right px, clear of the focal shapes
+                self._pill(d, attr, attr_right, h - 5, 10.5, WHITE, INK, LATO_BLACK, "br", "attr")
+            elif self.lead:
                 self._pill(d, attr, pad, h - 5, 10.5, WHITE, INK, LATO_BLACK, "bl", "attr")
             else:
                 self._pill(d, attr, w - 4, h - 4, 10, WHITE, INK, LATO_BOLD, "br", "attr")
@@ -368,7 +370,7 @@ def art_kyiv():
     burst(a, 0.7, 0.5, 0.62, 0.57)
     burst(a, 0.3, 0.6, 0.8, 0.72)
     burst(a, 0.56, 0.76, 1.0, 0.92)
-    a.finish("KYIV", "3 bridges hit", overlay=kyiv_labels)
+    a.finish("KYIV", "3 bridges hit", "Officials’ count", overlay=kyiv_labels)
 
 
 # ---- 2. Cyclone Akvan ------------------------------------------------------
@@ -430,7 +432,9 @@ def art_akvan():
             mid = (top[0] + fx * 0.55, top[1] + fy * 0.55 - 0.02)
             end = (top[0] + fx, top[1] + fy + droop)
             a.line([top, mid, end], PALM, 2.4)
-    a.finish("CYCLONE AKVAN", "Landfall · 8 am", overlay=akvan_labels)
+    # the source tag sits between the palms and the track arrow
+    a.finish("CYCLONE AKVAN", "Landfall · 8 am", "Weather office · IMD", overlay=akvan_labels,
+             attr_right=238)
 
 
 # ---- 3. Asia AI sell-off ---------------------------------------------------
@@ -498,7 +502,8 @@ def art_chips():
     a.line(pts, (255, 84, 84), 3.0)
     a.line(pts, (255, 200, 200), 0.9)
     a.circle(pts[-1][0], pts[-1][1], 0.04, fill=CORAL, outline=WHITE, width=1.4)
-    a.finish("AI SELL-OFF", callout="Asia, Friday’s close", overlay=chips_scoreboard)
+    a.finish("AI SELL-OFF", callout="Asia, Friday’s close", attr="Closing prices",
+             overlay=chips_scoreboard)
 
 
 # ---- 4. UK-EU reset --------------------------------------------------------
@@ -518,7 +523,7 @@ def art_euuk():
     person(a, 0.6, 0.76, 0.5, fill=(36, 44, 60))
     a.line([(0.42, 0.52), (0.5, 0.57), (0.58, 0.52)], (36, 44, 60), 4)
     a.circle(0.5, 0.57, 0.055, fill=(232, 196, 160), outline=INK, width=1)
-    a.finish("UK–EU DEAL")
+    a.finish("UK–EU DEAL", attr="Agreed · Reuters")
 
 
 # ---- 5. COP31 --------------------------------------------------------------
@@ -541,7 +546,7 @@ def art_cop31():
     a.line([(0.54, 0.42), (0.86, 0.42)], CRIMSON, 2)
     a.line([(0.6, 0.33), (0.8, 0.51)], CRIMSON, 1.6)
     a.line([(0.6, 0.51), (0.8, 0.33)], CRIMSON, 1.6)
-    a.finish("COP31: NO DEAL")
+    a.finish("COP31: NO DEAL", attr="Ongoing · UN News")
 
 
 # ---- 6. Missile over Poland ------------------------------------------------
@@ -580,7 +585,7 @@ def art_poland():
     a.line([(0.86, 0.58), (0.86, 0.72)], INK, 2)
     for r in (0.18, 0.26):
         a.arc(0.86, 0.5, r, 210, 330, CRIMSON, 1.2)
-    a.finish("POLAND: MISSILE")
+    a.finish("POLAND: MISSILE", attr="PM says · Guardian")
 
 
 # ---- 7. Iraqi army enters Jurf al-Sakher ----------------------------------
@@ -614,7 +619,7 @@ def art_iraq():
         a.circle(x, 0.88, 0.06, fill=INK, outline=None)
     for x in (0.54, 0.6, 0.66, 0.74):
         person(a, x, 0.94, 0.3, fill=(84, 90, 60))
-    a.finish("IRAQ: ARMY IN")
+    a.finish("IRAQ: ARMY IN", attr="Officials · Reuters")
 
 
 # ---- 8. Italy general strike -----------------------------------------------
@@ -646,7 +651,7 @@ def art_italy():
     for x in (0.1, 0.36, 0.62):
         a.line([(x, 0.8), (x, 0.5)], INK, 1.2)
         a.poly([(x, 0.5), (x + 0.08, 0.55), (x, 0.6)], fill=RED, outline=None)
-    a.finish("ITALY: STRIKE")
+    a.finish("ITALY: STRIKE", attr="Reported · AP")
 
 
 # ---- 9. Japan CPI ----------------------------------------------------------
@@ -674,7 +679,7 @@ def art_japan():
     a.line([(0.5, 0.56), (0.66, 0.46), (0.78, 0.4), (0.92, 0.14)], INK, 2.2)
     a.poly([(0.95, 0.06), (0.88, 0.14), (0.95, 0.2)], fill=INK, outline=None)
     a.line([(0.44, 0.96), (0.99, 0.96)], INK, 1.4)
-    a.finish("JAPAN: +2.3%")
+    a.finish("JAPAN: +2.3%", attr="Official data · MIC")
 
 
 # ---- 10. Seoul: move to impeach the chief justice -------------------------
@@ -702,7 +707,7 @@ def art_seoul():
     # gavel
     a.line([(0.6, 0.98), (0.76, 0.82)], (110, 70, 40), 3)
     a.rrect(0.72, 0.74, 0.84, 0.88, r=3, fill=(130, 84, 48), outline=INK, width=1)
-    a.finish("SEOUL: IMPEACH")
+    a.finish("SEOUL: IMPEACH", attr="Party vote · Herald")
 
 
 # ---- 11. Kenya's first oil well -------------------------------------------
@@ -743,7 +748,7 @@ def art_kenya():
         y0 = 0.1 + sum((0.07, 0.015, 0.07, 0.015, 0.07)[:k])
         a.rect(0.28, y0, 0.4, y0 + h, fill=col, outline=None)
     a.rect(0.28, 0.1, 0.4, 0.34, fill=None, outline=INK, width=0.8)
-    a.finish("KENYA: OIL")
+    a.finish("KENYA: OIL", attr="Spudded · The Star")
 
 
 # ---- 12. Bukele third-term bid --------------------------------------------
@@ -770,7 +775,7 @@ def art_bukele():
     a.rrect(0.72, 0.56, 0.96, 0.9, r=3, fill=(236, 214, 150), outline=INK, width=1.1)
     a.line([(0.75, 0.66), (0.93, 0.66)], GREY, 1)
     a.line([(0.75, 0.74), (0.93, 0.74)], GREY, 1)
-    a.finish("BUKELE: 3RD BID")
+    a.finish("BUKELE: 3RD BID", attr="Filed · AP")
 
 
 # ---- 13. Phillips century v India -----------------------------------------
@@ -804,7 +809,7 @@ def art_phillips():
     for k in range(3):
         a.rect(0.8 + k * 0.06, 0.08, 0.84 + k * 0.06, 0.2, fill=(250, 214, 80), outline=None)
     a.circle(0.24, 0.72, 0.03, fill=(220, 30, 40), outline=WHITE, width=0.6)
-    a.finish("PHILLIPS: 118")
+    a.finish("PHILLIPS: 118", attr="Scorecard · ICC")
 
 
 ART_FUNCS = [art_kyiv, art_akvan, art_chips, art_euuk, art_cop31, art_poland, art_iraq,
@@ -837,9 +842,8 @@ def build_all():
             bad.append((name, "badge size", [b["size"] for b in badge]))
         if lead and len([lb for lb in labels if lb["kind"] == "callout"]) != 1:
             bad.append((name, "lead needs one callout"))
-        # v10: no attribution boxes over the art; sources print in each caption
-        if any(lb["kind"] == "attr" for lb in labels):
-            bad.append((name, "attribution tag drawn over the art"))
+        if len([lb for lb in labels if lb["kind"] == "attr"]) != 1:
+            bad.append((name, "needs one attribution tag"))
     if bad:
         raise SystemExit(f"art label failure: {bad}")
     print(f"art: {len(ART_FUNCS)} illustrations, {len(LABELS)} labels, padding and overlap ok")
