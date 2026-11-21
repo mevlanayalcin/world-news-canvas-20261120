@@ -1,4 +1,4 @@
-"""Editorial illustrations for the Friday 20 November 2026 front page (v15).
+"""Editorial illustrations for the Friday 20 November 2026 front page (v16).
 
 Each picture has two layers:
 
@@ -10,8 +10,8 @@ Each picture has two layers:
 * a typographic layer drawn at printed size after the reduction, so FreeType
   renders it at its final pixel size: a solid crimson corner badge (top
   left, no outline), (leads only) a 14 px white callout pill stacked 3 px
-  under it, a small attribution tag at the bottom and, on lead 3, a
-  four-market closing scoreboard.
+  under it and, on lead 3, a four-market closing scoreboard. v16 draws no
+  source pill inside the picture: each caption below names its sources.
 
 Lead art is 316x132 (17 px badge, 14 px callout); card art is 188x78 (14 px badge).
 """
@@ -58,7 +58,6 @@ GRID_BAND, GRID_BADGE = 20, 14
 
 LABELS: list[dict] = []
 SUBJECT_DIFF = 12   # max channel change that counts as a drawn subject pixel
-LABEL_CLEAR = 4     # clear px every source pill keeps from every subject and label
 
 
 def font(path: Path, size: float) -> ImageFont.FreeTypeFont:
@@ -79,8 +78,8 @@ class Art:
         self.d = ImageDraw.Draw(self.im)
         # background-only twin: sky, sea, ground and field fills drawn inside
         # `with a.background():` land on both surfaces, subjects only on `im`.
-        # The pixel difference of the two is the subject mask that every
-        # in-picture label must keep LABEL_CLEAR px away from.
+        # The pixel difference of the two is the subject mask used to
+        # measure how close each in-picture label sits to the drawing.
         self.bg_im = Image.new("RGB", (self.W, size[1] * 2), bg)
         self.bd = ImageDraw.Draw(self.bg_im)
         self._bg = False
@@ -163,15 +162,13 @@ class Art:
             self.rect(0, ya, 1, ya + (y1 - y0) / steps + 0.002, fill=col, outline=None)
 
     # ---- printed-size typography ------------------------------------------
-    def finish(self, badge: str, callout: str | None = None, attr: str | None = None,
-               overlay=None, attr_at: str | None = None):
+    def finish(self, badge: str, callout: str | None = None, overlay=None):
         out = self.im.resize(self.size, Image.LANCZOS)
         bg = self.bg_im.resize(self.size, Image.LANCZOS)
         # subject mask at printed size: every pixel a subject changed
         diff = np.abs(np.asarray(out, np.int16) - np.asarray(bg, np.int16)).max(axis=2)
         self.mask = diff > SUBJECT_DIFF
         d = ImageDraw.Draw(out)
-        w, h = self.size
         if self.lead:
             pad, top, size = 6, 4, HERO_BADGE
         else:
@@ -183,21 +180,8 @@ class Art:
             self._pill(d, callout, pad, by1 + 3, 14, INK, WHITE, LATO_HEAVY, "tl", "callout")
         if overlay:
             overlay(self, d)
-        if attr:
-            # source pills sit in clear background space; build_all() proves
-            # each keeps LABEL_CLEAR px from every drawn subject pixel
-            if isinstance(attr_at, tuple):
-                x, y, at = attr_at
-            elif self.lead:
-                at = attr_at or "bl"
-                x, y = (pad if at == "bl" else w - pad), h - 5
-            else:
-                at = attr_at or "br"
-                x, y = (4 if at == "bl" else w - 4), h - 4
-            if self.lead:
-                self._pill(d, attr, x, y, 10.5, WHITE, INK, LATO_BLACK, at, "attr")
-            else:
-                self._pill(d, attr, x, y, 10, WHITE, INK, LATO_BOLD, at, "attr", py=2)
+        # v16: no source pill inside the picture; the source is printed in the
+        # caption directly below every illustration
         ASSETS.mkdir(exist_ok=True)
         out.save(ASSETS / self.name, format="PNG", optimize=True)
 
@@ -338,7 +322,7 @@ def art_kyiv():
     a.circle(bx, by, 0.03, fill=WHITE, outline=None)
     a.circle(0.68, 0.59, 0.045, fill=GOLD, outline=ORANGE, width=1.5)
     a.circle(0.6, 0.53, 0.035, fill=GOLD, outline=ORANGE, width=1.5)
-    a.finish("KYIV", "3 bridges hit", "Officials’ count", overlay=kyiv_labels)
+    a.finish("KYIV", "3 bridges hit", overlay=kyiv_labels)
 
 
 # ---- 2. Cyclone Akvan ------------------------------------------------------
@@ -367,7 +351,7 @@ def art_akvan():
     for i, x in enumerate((0.23, 0.26, 0.29)):
         person(a, x, 0.745, 0.15 - i * 0.012)
     raindrops(a, 0.55, 0.95, 4, (200, 228, 238), seed=3)
-    a.finish("CYCLONE AKVAN", "Landfall · 8 am", "Weather office · IMD", overlay=akvan_labels)
+    a.finish("CYCLONE AKVAN", "Landfall · 8 am", overlay=akvan_labels)
 
 
 # ---- 3. Global AI sell-off -------------------------------------------------
@@ -419,10 +403,7 @@ def art_chips():
         a.rect(x - 0.008, lo, x + 0.008, hi, fill=col, outline=None)
     a.line(pts, (255, 92, 92), 2.6)
     a.circle(pts[-1][0], pts[-1][1], 0.035, fill=CORAL, outline=WHITE, width=1.2)
-    # the source pill annotates the empty upper right of the chart, clear of
-    # the falling curve and 12 px left of the scoreboard
-    a.finish("AI SELL-OFF", callout="US & Asia, Friday", attr="Closing prices",
-             overlay=chips_scoreboard, attr_at=(181, 58, "tr"))
+    a.finish("AI SELL-OFF", callout="US & Asia, Friday", overlay=chips_scoreboard)
 
 
 # ---- 5. UK-EU reset --------------------------------------------------------
@@ -430,8 +411,8 @@ def art_euuk():
     a = Art("art_05.png", GRID, (214, 228, 240), GRID_BAND)
     with a.background():
         a.rect(0, 0, 1, 1, fill=(214, 228, 240), outline=None)
-    # v13: the whole ceremony stands on the back of the plaza (y <= 0.58) so
-    # the source pill sits on open paving, clear of the handshake and table
+    # the whole ceremony stands on the back of the plaza (y <= 0.58),
+    # leaving open paving in front
     a.rect(0.32, 0.04, 0.68, 0.5, fill=(178, 200, 220), outline=INK, width=1.4)
     for i in range(7):
         a.line([(0.32 + i * 0.06, 0.04), (0.32 + i * 0.06, 0.5)], (140, 166, 190), 1)
@@ -448,7 +429,7 @@ def art_euuk():
     person(a, 0.6, 0.5, 0.46, fill=(36, 44, 60))
     a.line([(0.42, 0.3), (0.5, 0.345), (0.58, 0.3)], (36, 44, 60), 4)
     a.circle(0.5, 0.345, 0.055, fill=(232, 196, 160), outline=INK, width=1)
-    a.finish("UK–EU DEAL", attr="Agreed · Reuters")
+    a.finish("UK–EU DEAL")
 
 
 # ---- 6. COP31 --------------------------------------------------------------
@@ -464,7 +445,7 @@ def art_cop31():
     a.rrect(0.378, 0.26, 0.402, 0.62, r=3, fill=RED, outline=None)
     a.circle(0.39, 0.68, 0.1, fill=RED, outline=INK, width=1.2)
     # the draft text with the fossil-fuel line struck out
-    # v13: the draft text ends at y = 0.56, above the sea where the pill sits
+    # the draft text ends at y = 0.56, above the sea
     a.poly([(0.5, 0.04), (0.9, 0.04), (0.9, 0.56), (0.5, 0.56)], fill=WHITE, outline=INK, width=1.3)
     for k in range(5):
         y = 0.12 + k * 0.1
@@ -473,7 +454,7 @@ def art_cop31():
     a.line([(0.54, 0.32), (0.86, 0.32)], CRIMSON, 2)
     a.line([(0.6, 0.24), (0.8, 0.4)], CRIMSON, 1.6)
     a.line([(0.6, 0.4), (0.8, 0.24)], CRIMSON, 1.6)
-    a.finish("COP31: NO DEAL", attr="Ongoing · UN News")
+    a.finish("COP31: NO DEAL")
 
 
 # ---- 7. Missile over Poland ------------------------------------------------
@@ -504,12 +485,12 @@ def art_poland():
     a.poly([(0.5, 0.36), (0.55, 0.24), (0.57, 0.34)], fill=(70, 76, 86), outline=INK, width=1)
     a.poly([(0.6, 0.31), (0.66, 0.24), (0.66, 0.33)], fill=(70, 76, 86), outline=INK, width=1)
     # radar dish
-    # v13: radar mast stands behind the tree line, so the pill sits on the fields
+    # the radar mast stands behind the tree line, above the fields
     a.arc(0.86, 0.46, 0.12, 180, 360, INK, 2)
     a.line([(0.86, 0.46), (0.86, 0.6)], INK, 2)
     for r in (0.18, 0.26):
         a.arc(0.86, 0.38, r, 210, 330, CRIMSON, 1.2)
-    a.finish("POLAND: MISSILE", attr="PM says · Guardian")
+    a.finish("POLAND: MISSILE")
 
 
 def disc_pts(a: Art, cx, cy, r, t0, t1, n=48):
@@ -555,7 +536,7 @@ def art_nvidia():
     a.circle(0.8, 0.49, 0.045, fill=(27, 42, 65), outline=None)
     a.circle(0.885, 0.43, 0.09, fill=None, outline=GOLD, width=1.8)
     a.line([(0.905, 0.5), (0.94, 0.57)], GOLD, 2.2)
-    a.finish("NVIDIA: SEC PROBE", attr="Reported · Reuters")
+    a.finish("NVIDIA: SEC PROBE")
 
 
 # ---- 8. Tanker struck in the Strait of Hormuz ------------------------------
@@ -583,7 +564,7 @@ def art_hormuz():
     a.rect(0.06, 0.32, 0.16, 0.52, fill=(236, 232, 222), outline=INK, width=1)
     a.rect(0.075, 0.37, 0.145, 0.41, fill=(60, 90, 120), outline=None)
     a.rect(0.12, 0.22, 0.145, 0.32, fill=(40, 40, 44), outline=None)
-    a.finish("HORMUZ: TANKER", attr="Alert · UKMTO")
+    a.finish("HORMUZ: TANKER")
 
 
 # ---- 9. Pakistani minister in New Delhi ------------------------------------
@@ -622,7 +603,7 @@ def art_indiapak():
         x = 0.31 + (0.63 - 0.31) * t
         y = 0.24 - 0.09 * math.sin(math.pi * t)
         a.circle(x, y, 0.025, fill=GOLD, outline=None)
-    a.finish("INDIA–PAKISTAN", attr="SCO meet · PTI")
+    a.finish("INDIA–PAKISTAN")
 
 
 # ---- 11. Pancreatic cancer trial -------------------------------------------
@@ -662,7 +643,7 @@ def art_cancer():
     a.line([(0.55, 0.36), (0.66, 0.3), (0.77, 0.24), (0.88, 0.06)], (34, 160, 90), 1.8)
     a.poly([(0.915, 0.0), (0.85, 0.05), (0.905, 0.1)], fill=(34, 160, 90), outline=None)
     a.line([(0.48, base), (0.98, base)], INK, 1.4)
-    a.finish("CANCER: 60.7%", attr="Trial data · OncLive")
+    a.finish("CANCER: 60.7%")
 
 
 # ---- 12. Argentina country risk --------------------------------------------
@@ -691,14 +672,14 @@ def art_argentina():
     t = math.radians(34)
     a.line([(cx, cy), (cx + (R - 0.12) * math.cos(t) * a.H / a.W, cy - (R - 0.12) * math.sin(t))], (255, 70, 60), 2.4)
     a.circle(cx, cy, 0.07, fill=(255, 70, 60), outline=WHITE, width=1)
-    a.finish("ARGENTINA: 1,000+", attr="Bonds · Bloomberg")
+    a.finish("ARGENTINA: 1,000+")
 
 
 # ---- 10. Kenya's first oil well -------------------------------------------
 def art_kenya():
     a = Art("art_10.png", GRID, (240, 170, 90), GRID_BAND)
-    # v13: the rig stands left of centre and a far acacia sits on the
-    # horizon, so the source pill lies on open ground at the bottom right
+    # the rig stands left of centre and a far acacia sits on the horizon,
+    # leaving open ground at the bottom right
     with a.background():
         a.gradient((236, 140, 70), (250, 214, 140), 0, 0.6, 12)
         a.circle(0.8, 0.42, 0.18, fill=(255, 236, 170), outline=None)   # low sun
@@ -734,7 +715,7 @@ def art_kenya():
         y0 = 0.1 + sum((0.07, 0.015, 0.07, 0.015, 0.07)[:k])
         a.rect(0.05, y0, 0.17, y0 + h, fill=col, outline=None)
     a.rect(0.05, 0.1, 0.17, 0.34, fill=None, outline=INK, width=0.8)
-    a.finish("KENYA: OIL", attr="Spudded · The Star")
+    a.finish("KENYA: OIL")
 
 
 # ---- 13. Phillips century v India -----------------------------------------
@@ -751,8 +732,8 @@ def art_phillips():
             col = (70, 150, 80) if k % 2 else (84, 164, 92)
             a.rect(0, 0.42 + k * 0.1, 1, 0.52 + k * 0.1, fill=col, outline=None)
     # pitch
-    # v13: pitch, stumps and batter shifted left so the source pill sits on
-    # the outfield at the bottom right
+    # pitch, stumps and batter sit left of centre, leaving open outfield
+    # at the bottom right
     a.poly([(0.25, 0.5), (0.39, 0.5), (0.49, 1), (0.17, 1)], fill=(216, 196, 140), outline=None)
     for x in (0.29, 0.32, 0.35):
         a.rect(x, 0.42, x + 0.012, 0.56, fill=WHITE, outline=INK, width=0.6)
@@ -771,7 +752,7 @@ def art_phillips():
     for k in range(3):
         a.rect(0.8 + k * 0.06, 0.08, 0.84 + k * 0.06, 0.2, fill=(250, 214, 80), outline=None)
     a.circle(0.11, 0.72, 0.03, fill=(220, 30, 40), outline=WHITE, width=0.6)
-    a.finish("PHILLIPS: 118", attr="Scorecard · ICC")
+    a.finish("PHILLIPS: 118")
 
 
 ART_FUNCS = [art_kyiv, art_akvan, art_chips, art_nvidia, art_euuk, art_cop31, art_poland,
@@ -797,19 +778,6 @@ def build_all():
                 a, b = p["bbox"], q["bbox"]
                 if a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]:
                     bad.append((name, p["text"], "overlaps", q["text"]))
-        for p in labels:
-            if p["kind"] != "attr":
-                continue
-            if p["gap"] < LABEL_CLEAR:
-                bad.append((name, p["text"], "subject gap", p["gap"]))
-            for q in labels:
-                if q is p:
-                    continue
-                a, b = p["bbox"], q["bbox"]
-                gx = max(b[0] - a[2], a[0] - b[2])
-                gy = max(b[1] - a[3], a[1] - b[3])
-                if max(gx, gy) < LABEL_CLEAR:
-                    bad.append((name, p["text"], "label gap", q["text"], round(max(gx, gy), 1)))
         badge = [lb for lb in labels if lb["kind"] == "badge"]
         lead = labels[0]["lead"]
         lo, hi = (16, 18) if lead else (13, 14)
@@ -817,13 +785,13 @@ def build_all():
             bad.append((name, "badge size", [b["size"] for b in badge]))
         if lead and len([lb for lb in labels if lb["kind"] == "callout"]) != 1:
             bad.append((name, "lead needs one callout"))
-        if len([lb for lb in labels if lb["kind"] == "attr"]) != 1:
-            bad.append((name, "needs one attribution tag"))
+        if any(lb["kind"] == "attr" for lb in labels):
+            bad.append((name, "v16 draws no source pill inside the picture"))
     if bad:
         raise SystemExit("art label failure:\n  " + "\n  ".join(map(str, bad)))
-    gaps = {lb["art"][4:6]: lb["gap"] for lb in LABELS if lb["kind"] == "attr"}
-    print(f"art: {len(ART_FUNCS)} illustrations, {len(LABELS)} labels, padding and overlap ok; "
-          f"source-pill clearance from subjects (px): {gaps}")
+    kinds = sorted({lb["kind"] for lb in LABELS})
+    print(f"art: {len(ART_FUNCS)} illustrations, {len(LABELS)} labels ({', '.join(kinds)}), "
+          f"padding and overlap ok; no in-picture source pills")
 
 
 if __name__ == "__main__":
